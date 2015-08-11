@@ -9,9 +9,9 @@
 
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.eclipse.smarthome.transform</groupId>
-  <artifactId>org.eclipse.smarthome.transform.xpath.test</artifactId>
+  <artifactId>org.eclipse.smarthome.transform.jsonpath.test</artifactId>
 
-  <name>Eclipse SmartHome XPath Transformation Service Tests</name>
+  <name>Eclipse SmartHome JSONPath Transformation Service Tests</name>
 
   <packaging>eclipse-test-plugin</packaging>
 
