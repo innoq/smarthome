@@ -12,5 +12,5 @@ Service-Component: OSGI-INF/jsonpathservice.xml
 Bundle-ClassPath: .,
  lib/asm-1.0.2.jar,
  lib/json-path-2.0.0.jar,
- lib/json-smart-2.1.1.jar
+ lib/json-smart-2.2.jar
 

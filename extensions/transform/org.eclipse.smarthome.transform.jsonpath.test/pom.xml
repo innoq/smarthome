@@ -11,16 +11,22 @@
   <groupId>org.eclipse.smarthome.transform</groupId>
   <artifactId>org.eclipse.smarthome.transform.jsonpath.test</artifactId>
 
-  <name>Eclipse SmartHome JSONPath Transformation Service Tests</name>
+  <name>Eclipse SmartHome JSonPath Transformation Service Tests</name>
 
   <packaging>eclipse-test-plugin</packaging>
 
   <build>
     <plugins>
       <plugin>
-        <groupId>org.eclipse.tycho</groupId>
+        <groupId>${tycho-groupid}</groupId>
+        <artifactId>target-platform-configuration</artifactId>
+        <configuration>
+          <environments combine.self="override"></environments>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>${tycho-groupid}</groupId>
         <artifactId>tycho-surefire-plugin</artifactId>
-        <version>${tycho-version}</version>
       </plugin>
     </plugins>
   </build>
