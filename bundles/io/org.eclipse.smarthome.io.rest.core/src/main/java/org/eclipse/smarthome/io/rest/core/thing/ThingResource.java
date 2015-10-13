@@ -75,6 +75,12 @@ public class ThingResource implements RESTResource {
     @Context
     private UriInfo uriInfo;
 
+    /**
+     * create a new Thing
+     * @param thingBean
+     * @return
+     * @throws IOException
+     */
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     public Response create(ThingDTO thingBean) throws IOException {
@@ -86,11 +92,14 @@ public class ThingResource implements RESTResource {
             bridgeUID = new ThingUID(thingBean.bridgeUID);
         }
 
+        // turn the ThingDTO's configuration into a Configuration
         Configuration configuration = getConfiguration(thingBean);
 
-        managedThingProvider.createThing(thingUIDObject.getThingTypeUID(), thingUIDObject, bridgeUID, configuration);
+        // create new Thing
+        Thing thing = managedThingProvider.createThing(thingUIDObject.getThingTypeUID(), thingUIDObject, bridgeUID, configuration);
 
-        return Response.ok().build();
+        // return the newly created object
+        return Response.ok(EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri())).build();
     }
 
     @GET
