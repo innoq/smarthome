@@ -95,11 +95,33 @@ public class ThingResource implements RESTResource {
         // turn the ThingDTO's configuration into a Configuration
         Configuration configuration = getConfiguration(thingBean);
 
-        // create new Thing
-        Thing thing = managedThingProvider.createThing(thingUIDObject.getThingTypeUID(), thingUIDObject, bridgeUID, configuration);
+        try
+        {
+        	Status status 	= Status.OK;
+        	Thing thing 	= managedThingProvider.get(thingUIDObject);
+        	
+        	//
+        	// does the Thing already exist?
+        	//
+        	if( null == thing )
+        	{   
+		        // if not, create new Thing
+		        thing = managedThingProvider.createThing(thingUIDObject.getThingTypeUID(), thingUIDObject, bridgeUID, configuration);
+        	}
+        	else
+        	{
+        		// if so, report a conflict
+        		status = Status.CONFLICT;
+        	}
 
-        // return the newly created object
-        return Response.ok(EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri())).build();
+	        // return the newly created or existing object
+        	Object entity = EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri());
+        	return Response.status(status).entity(entity).build();
+        }
+        catch( Exception e ) 
+        {
+        	return Response.serverError().build();
+        }
     }
 
     @GET
