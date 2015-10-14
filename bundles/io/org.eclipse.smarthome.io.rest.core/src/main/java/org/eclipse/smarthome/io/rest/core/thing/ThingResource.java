@@ -79,12 +79,10 @@ public class ThingResource implements RESTResource {
      * create a new Thing
      * @param thingBean
      * @return
-     * @throws IOException
      */
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response create(ThingDTO thingBean) throws IOException {
-
+    public Response create(ThingDTO thingBean) {
         ThingUID thingUIDObject = new ThingUID(thingBean.UID);
         ThingUID bridgeUID = null;
 
