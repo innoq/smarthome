@@ -52,6 +52,9 @@ import org.eclipse.smarthome.io.rest.RESTResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 /**
  * This class acts as a REST resource for things and is registered with the
  * Jersey servlet.
@@ -95,9 +98,9 @@ public class ThingResource implements RESTResource {
 
         try
         {
-        	Status status 	= Status.OK;
-        	Thing thing 	= managedThingProvider.get(thingUIDObject);
-        	
+        	Status status;
+        	Thing thing = managedThingProvider.get(thingUIDObject);
+
         	//
         	// does the Thing already exist?
         	//
@@ -105,6 +108,7 @@ public class ThingResource implements RESTResource {
         	{   
 		        // if not, create new Thing
 		        thing = managedThingProvider.createThing(thingUIDObject.getThingTypeUID(), thingUIDObject, bridgeUID, configuration);
+		        status = Status.CREATED;
         	}
         	else
         	{
@@ -113,12 +117,25 @@ public class ThingResource implements RESTResource {
         	}
 
 	        // return the newly created or existing object
-        	Object entity = EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri());
+        	Object entity = EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri());        	
         	return Response.status(status).entity(entity).build();
         }
         catch( Exception e ) 
         {
-        	return Response.serverError().build();
+        	Gson gson = new GsonBuilder().setPrettyPrinting().create();
+
+        	Map<String,Object> ex = new HashMap<>();
+        	
+        	ex.put("class", 			e.getClass().getName());
+        	ex.put("cause", 			null!=e.getCause() ? e.getCause().getClass().getName() : null );
+        	ex.put("stacktrace", 		e.getStackTrace());
+        	ex.put("message", 			e.getMessage());
+        	ex.put("localized-message", e.getLocalizedMessage());
+
+        	Map<String,Object> er = new HashMap<>();
+        	er.put("exception", 		ex);
+        	
+        	return Response.serverError().entity( gson.toJson( er ) ).build();
         }
     }
 
