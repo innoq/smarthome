@@ -30,6 +30,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.Response.StatusType;
 import javax.ws.rs.core.UriInfo;
 
 import org.eclipse.smarthome.config.core.Configuration;
@@ -54,6 +55,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 /**
  * This class acts as a REST resource for things and is registered with the
@@ -116,9 +119,29 @@ public class ThingResource implements RESTResource {
         		status = Status.CONFLICT;
         	}
 
-	        // return the newly created or existing object
-        	Object entity = EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri());        	
-        	return Response.status(status).entity(entity).build();
+
+        	EnrichedThingDTO dto = EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri());
+        	Object entity = dto;
+        	
+        	Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        	
+        	if( status.getFamily() != Response.Status.Family.SUCCESSFUL ) 
+        	{
+        		JsonObject ret 	= new JsonObject();
+
+        		JsonObject err 	= new JsonObject();
+        		err.addProperty( "message", "Thing " + thingUIDObject.toString() + " already exists!" );
+
+        		ret.add( "error", err);
+        	
+    	        // return the existing object
+            	JsonElement thingjson = gson.toJsonTree( dto );
+            	ret.add( "thing", thingjson );
+            	
+            	entity = ret;
+        	}
+
+        	return Response.status(status).entity( gson.toJson(entity) ).build();
         }
         catch( Exception e ) 
         {
