@@ -101,7 +101,7 @@ public class ThingResource implements RESTResource {
         try
         {
         	Status status;
-        	Thing thing = managedThingProvider.get(thingUIDObject);
+        	Thing thing = null; //managedThingProvider.get(thingUIDObject);
 
         	//
         	// does the Thing already exist?
@@ -126,17 +126,16 @@ public class ThingResource implements RESTResource {
         	
         	if( status.getFamily() != Response.Status.Family.SUCCESSFUL ) 
         	{
-        		JsonObject ret 	= new JsonObject();
-
-        		JsonObject err 	= new JsonObject();
-        		err.addProperty( "message", "Thing " + thingUIDObject.toString() + " already exists!" );
-
-        		ret.add( "error", err);
-        	
-    	        // return the existing object
-            	ret.add( "thing", gson.toJsonTree( dto ) );
-            	
-            	entity = ret;
+				JsonObject ret 	= new JsonObject();
+				JsonObject err 	= new JsonObject();
+				ret.add( "error", err);
+				
+				err.addProperty( "message", "Thing " + thingUIDObject.toString() + " already exists!" );
+				
+				// return the existing object
+				ret.add( "thing", gson.toJsonTree( dto ) );
+				
+				entity = ret;
         	}
 
         	return Response.status(status).header("Content-Type", MediaType.APPLICATION_JSON).entity( gson.toJson(entity) ).build();
@@ -145,18 +144,21 @@ public class ThingResource implements RESTResource {
         {
         	Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
-        	Map<String,Object> ex = new HashMap<>();
-        	
-        	ex.put("class", 			e.getClass().getName());
-        	ex.put("cause", 			null!=e.getCause() ? e.getCause().getClass().getName() : null );
-        	ex.put("stacktrace", 		e.getStackTrace());
-        	ex.put("message", 			e.getMessage());
-        	ex.put("localized-message", e.getLocalizedMessage());
+			JsonObject ret 	= new JsonObject();
+			JsonObject err 	= new JsonObject();
+			ret.add( "error", err );
 
-        	Map<String,Object> er = new HashMap<>();
-        	er.put("exception", 		ex);
-        	
-        	return Response.serverError().header("Content-Type", MediaType.APPLICATION_JSON).entity( gson.toJson( er ) ).build();
+			JsonObject exc	= new JsonObject();
+			err.add( "exception", exc );
+			
+			exc.addProperty( "class", 				e.getClass().getName() );
+			exc.addProperty( "message", 			e.getMessage() );
+			exc.addProperty( "localized-message", 	e.getLocalizedMessage() );
+			exc.addProperty( "cause", 				null!=e.getCause() ? e.getCause().getClass().getName() : null );
+			
+			exc.add(		 "stacktrace", 			gson.toJsonTree( e.getStackTrace() ) );
+			        	
+        	return Response.serverError().header("Content-Type", MediaType.APPLICATION_JSON).entity( gson.toJson( ret ) ).build();
         }
     }
 
