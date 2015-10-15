@@ -30,7 +30,6 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
-import javax.ws.rs.core.Response.StatusType;
 import javax.ws.rs.core.UriInfo;
 
 import org.eclipse.smarthome.config.core.Configuration;
@@ -55,7 +54,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 /**
@@ -66,6 +64,7 @@ import com.google.gson.JsonObject;
  * @author Kai Kreuzer - refactored for using the OSGi JAX-RS connector
  */
 @Path("things")
+@Produces(MediaType.APPLICATION_JSON)
 public class ThingResource implements RESTResource {
 
     private final Logger logger = LoggerFactory.getLogger(ThingResource.class);
@@ -135,13 +134,12 @@ public class ThingResource implements RESTResource {
         		ret.add( "error", err);
         	
     	        // return the existing object
-            	JsonElement thingjson = gson.toJsonTree( dto );
-            	ret.add( "thing", thingjson );
+            	ret.add( "thing", gson.toJsonTree( dto ) );
             	
             	entity = ret;
         	}
 
-        	return Response.status(status).entity( gson.toJson(entity) ).build();
+        	return Response.status(status).header("Content-Type", MediaType.APPLICATION_JSON).entity( gson.toJson(entity) ).build();
         }
         catch( Exception e ) 
         {
@@ -158,7 +156,7 @@ public class ThingResource implements RESTResource {
         	Map<String,Object> er = new HashMap<>();
         	er.put("exception", 		ex);
         	
-        	return Response.serverError().entity( gson.toJson( er ) ).build();
+        	return Response.serverError().header("Content-Type", MediaType.APPLICATION_JSON).entity( gson.toJson( er ) ).build();
         }
     }
 
