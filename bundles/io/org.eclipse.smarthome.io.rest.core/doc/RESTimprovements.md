@@ -51,6 +51,7 @@
       "status": "UNINITIALIZED",
       "statusDetail": "NONE"
     },
+	"link": "http://localhost:8080/rest/things/yahooweather:weather:foo",
     "configuration": {
       "refresh": 30
     },
@@ -80,6 +81,23 @@
 }
 ```
 
+## ThingResource@GET
+* provide a link to the Thing (as ItemResource does)
+```json
+{
+  "statusInfo": {
+    "status": "ONLINE",
+    "statusDetail": "NONE"
+  },
+  "link": "http://localhost:8080/rest/things/yahooweather:weather:foo",
+  "configuration": {
+    "refresh": 30
+  },
+  "properties": {},
+  "UID": "yahooweather:weather:foo",
+  "channels": [ ]
+}
+```
 
 
 # breaking REST API changes

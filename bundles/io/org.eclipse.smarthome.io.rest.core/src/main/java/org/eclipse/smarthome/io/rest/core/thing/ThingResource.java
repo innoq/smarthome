@@ -64,11 +64,14 @@ import com.google.gson.JsonObject;
  * @author Dennis Nobel - Initial contribution
  * @author Kai Kreuzer - refactored for using the OSGi JAX-RS connector
  */
-@Path("things")
+@Path(ThingResource.PATH_THINGS)
 @Produces(MediaType.APPLICATION_JSON)
 public class ThingResource implements RESTResource {
 
     private final Logger logger = LoggerFactory.getLogger(ThingResource.class);
+
+    /** The URI path to this resource */
+    public static final String PATH_THINGS = "things";
     
     private ItemChannelLinkRegistry itemChannelLinkRegistry;
     private ItemFactory itemFactory;

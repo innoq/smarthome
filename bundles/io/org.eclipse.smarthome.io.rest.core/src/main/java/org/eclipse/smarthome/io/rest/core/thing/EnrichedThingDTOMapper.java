@@ -37,6 +37,11 @@ public class EnrichedThingDTOMapper extends ThingDTOMapper {
         EnrichedGroupItemDTO groupItemDTO = groupItem != null ? (EnrichedGroupItemDTO) EnrichedItemDTOMapper.map(
                 groupItem, true, uri) : null;
 
-        return new EnrichedThingDTO(thingDTO, thing.getStatusInfo(), groupItemDTO);
+        String link = null;
+        if (uri != null) {
+            link = uri.toASCIIString() + ThingResource.PATH_THINGS + "/" + thingDTO.UID;
+        }
+                        
+        return new EnrichedThingDTO(thingDTO, thing.getStatusInfo(), groupItemDTO, link);
     }
 }
