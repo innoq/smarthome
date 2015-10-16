@@ -49,6 +49,7 @@ import org.eclipse.smarthome.core.thing.link.ItemChannelLink;
 import org.eclipse.smarthome.core.thing.link.ItemChannelLinkRegistry;
 import org.eclipse.smarthome.core.thing.link.ManagedItemChannelLinkProvider;
 import org.eclipse.smarthome.io.rest.RESTResource;
+import org.eclipse.smarthome.io.rest.core.internal.SmarthomeRESTExceptionMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +69,7 @@ import com.google.gson.JsonObject;
 public class ThingResource implements RESTResource {
 
     private final Logger logger = LoggerFactory.getLogger(ThingResource.class);
-
+    
     private ItemChannelLinkRegistry itemChannelLinkRegistry;
     private ItemFactory itemFactory;
     private ItemRegistry itemRegistry;
@@ -98,68 +99,45 @@ public class ThingResource implements RESTResource {
         // turn the ThingDTO's configuration into a Configuration
         Configuration configuration = getConfiguration(thingBean);
 
-        try
-        {
-        	Status status;
-        	Thing thing = null; //managedThingProvider.get(thingUIDObject);
+    	Status status;
+    	Thing thing = managedThingProvider.get(thingUIDObject);
 
-        	//
-        	// does the Thing already exist?
-        	//
-        	if( null == thing )
-        	{   
-		        // if not, create new Thing
-		        thing = managedThingProvider.createThing(thingUIDObject.getThingTypeUID(), thingUIDObject, bridgeUID, configuration);
-		        status = Status.CREATED;
-        	}
-        	else
-        	{
-        		// if so, report a conflict
-        		status = Status.CONFLICT;
-        	}
+    	//
+    	// does the Thing already exist?
+    	//
+    	if( null == thing )
+    	{   
+	        // if not, create new Thing
+	        thing = managedThingProvider.createThing(thingUIDObject.getThingTypeUID(), thingUIDObject, bridgeUID, configuration);
+	        status = Status.CREATED;
+    	}
+    	else
+    	{
+    		// if so, report a conflict
+    		status = Status.CONFLICT;
+    	}
 
 
-        	EnrichedThingDTO dto = EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri());
-        	Object entity = dto;
-        	
-        	Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        	
-        	if( status.getFamily() != Response.Status.Family.SUCCESSFUL ) 
-        	{
-				JsonObject ret 	= new JsonObject();
-				JsonObject err 	= new JsonObject();
-				ret.add( "error", err);
-				
-				err.addProperty( "message", "Thing " + thingUIDObject.toString() + " already exists!" );
-				
-				// return the existing object
-				ret.add( "thing", gson.toJsonTree( dto ) );
-				
-				entity = ret;
-        	}
-
-        	return Response.status(status).header("Content-Type", MediaType.APPLICATION_JSON).entity( gson.toJson(entity) ).build();
-        }
-        catch( Exception e ) 
-        {
-        	Gson gson = new GsonBuilder().setPrettyPrinting().create();
-
+    	EnrichedThingDTO dto = EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri());
+    	Object entity = dto;
+    	
+    	Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    	
+    	if( status.getFamily() != Response.Status.Family.SUCCESSFUL ) 
+    	{
 			JsonObject ret 	= new JsonObject();
 			JsonObject err 	= new JsonObject();
-			ret.add( "error", err );
+			ret.add( SmarthomeRESTExceptionMapper.JSON_KEY_ERROR, err);
+			
+			err.addProperty( SmarthomeRESTExceptionMapper.JSON_KEY_ERROR_MESSAGE, "Thing " + thingUIDObject.toString() + " already exists!" );
+			
+			// return the existing object
+			ret.add( "thing", gson.toJsonTree( dto ) );
+			
+			entity = ret;
+    	}
 
-			JsonObject exc	= new JsonObject();
-			err.add( "exception", exc );
-			
-			exc.addProperty( "class", 				e.getClass().getName() );
-			exc.addProperty( "message", 			e.getMessage() );
-			exc.addProperty( "localized-message", 	e.getLocalizedMessage() );
-			exc.addProperty( "cause", 				null!=e.getCause() ? e.getCause().getClass().getName() : null );
-			
-			exc.add(		 "stacktrace", 			gson.toJsonTree( e.getStackTrace() ) );
-			        	
-        	return Response.serverError().header("Content-Type", MediaType.APPLICATION_JSON).entity( gson.toJson( ret ) ).build();
-        }
+    	return Response.status(status).header("Content-Type", MediaType.APPLICATION_JSON).entity( gson.toJson(entity) ).build();
     }
 
     @GET

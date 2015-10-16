@@ -3,7 +3,7 @@
 ## ThingResource@POST
 * returns created object as JSON (implemented)
 * return http code 409 (CONFLICT) instead of 500 in case the object already exists (implemented)
-
+* return existing Things data in case it already exists
 
 
 # breaking REST API changes
