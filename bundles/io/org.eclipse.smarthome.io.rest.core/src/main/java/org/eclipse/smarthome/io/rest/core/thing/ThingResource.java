@@ -139,12 +139,21 @@ public class ThingResource implements RESTResource {
     @GET
     @Path("/{thingUID}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getByUID(@PathParam("thingUID") String thingUID) {
+    public Response getByUID(@PathParam("thingUID") String thingUID) 
+    {
         Thing thing = thingRegistry.get((new ThingUID(thingUID)));
-        if (thing != null) {
-            return Response.ok(EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri())).build();
-        } else {
-            return Response.noContent().build();
+
+        //
+        // return Thing data if it does exist
+        //
+        if (thing != null) 
+        {
+        	Object entity = EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri());
+        	return JSONResponse.createResponse(Status.OK, entity, null);
+        } 
+        else 
+        {
+        	return JSONResponse.createResponse(Status.NOT_FOUND, null, "Thing " + thingUID + " does not exist!");
         }
     }
 

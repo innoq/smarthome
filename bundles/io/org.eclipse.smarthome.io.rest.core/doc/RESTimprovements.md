@@ -102,13 +102,16 @@
 
 # breaking REST API changes
 
-## ThingResource@POST
-* returns 201 instead of 200 when creation (implemented)
+## ThingResource@POST (implemented)
+* returns 201 instead of 200 when creation
+
+## ThingResource@GET/thingUID (implemented)
+* returns 404 instead of 204 in case thingUID cannot be found  
 
 
 # breaking API changes
 
 ## ManagedThingProvider#createThing should throw ThingExistsException
 * currently throws IllegalArgumentException which is a RuntimeException
-** caller has to guess what the reason is
+ * caller has to guess what the reason is
 * ThingExistsException should contain the existing Thing
