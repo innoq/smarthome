@@ -117,12 +117,13 @@ public class JSONResponse
 	 * @param errormessage
 	 * @return
 	 */
+	private final static Object NOENTITY = new Object();
 	public static Response createResponse( Response.Status status, Object entity, String errormessage )
 	{
 		JsonObject ret;
     	if( status.getFamily() == Response.Status.Family.SUCCESSFUL ) 
     	{
-    		ret = GSON.toJsonTree( entity ).getAsJsonObject();
+    		ret = GSON.toJsonTree( null!=entity ? entity : NOENTITY ).getAsJsonObject();
     	}
     	else 
     	{
