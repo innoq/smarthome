@@ -122,25 +122,8 @@ public class ThingResource implements RESTResource {
 
 
     	EnrichedThingDTO dto = EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri());
-    	Object entity = dto;
     	
-    	Gson gson = new GsonBuilder().setPrettyPrinting().create();
-    	
-    	if( status.getFamily() != Response.Status.Family.SUCCESSFUL ) 
-    	{
-			JsonObject ret 	= new JsonObject();
-			JsonObject err 	= new JsonObject();
-			ret.add( JSONResponse.JSON_KEY_ERROR, err);
-			
-			err.addProperty( JSONResponse.JSON_KEY_ERROR_MESSAGE, "Thing " + thingUIDObject.toString() + " already exists!" );
-			
-			// return the existing object
-			ret.add( "thing", gson.toJsonTree( dto ) );
-			
-			entity = ret;
-    	}
-
-    	return Response.status(status).header("Content-Type", MediaType.APPLICATION_JSON).entity( gson.toJson(entity) ).build();
+    	return JSONResponse.createResponse(status, dto, "Thing " + thingUIDObject.toString() + " already exists!");
     }
 
     @GET

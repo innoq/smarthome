@@ -40,7 +40,15 @@ public class JSONResponse
 	}
 
 	
-	private static JsonObject createErrorJson(String message, Response.Status status, Exception ex)
+	/**
+	 * setup JSON depending on the content
+	 * @param message
+	 * @param status
+	 * @param entity
+	 * @param ex
+	 * @return
+	 */
+	private static JsonObject createErrorJson(String message, Response.Status status, Object entity, Exception ex)
 	{
 		JsonObject ret 	= new JsonObject();
 		JsonObject err 	= new JsonObject();
@@ -55,7 +63,19 @@ public class JSONResponse
 		{
 			err.addProperty(JSON_KEY_HTTPCODE, status.getStatusCode());
 		}
+
+		//
+		// in case there is an entity...
+		//
+		if( null != entity )
+		{
+			// return the existing object
+			ret.add( "entity", GSON.toJsonTree( entity ) );
+		}
 		
+		//
+		// is there an exception?
+		//
 		if( null != ex )
 		{
 			//
@@ -78,13 +98,45 @@ public class JSONResponse
 	}
 
 
-	public Response createErrorResponse( Response.Status status, String message )
+	/**
+	 * in case of error (404 and such)
+	 * @param status
+	 * @param errormessage
+	 * @return
+	 */
+	public static Response createErrorResponse( Response.Status status, String errormessage )
 	{
-		JsonObject ret = createErrorJson(message, status, null);
-		return response(status).entity( GSON.toJson(ret) ).build();
+		return createResponse(status, null, errormessage);
 	}
 	
 	
+	/**
+	 * 
+	 * @param status
+	 * @param entity
+	 * @param errormessage
+	 * @return
+	 */
+	public static Response createResponse( Response.Status status, Object entity, String errormessage )
+	{
+		JsonObject ret;
+    	if( status.getFamily() == Response.Status.Family.SUCCESSFUL ) 
+    	{
+    		ret = GSON.toJsonTree( entity ).getAsJsonObject();
+    	}
+    	else 
+    	{
+    		ret = createErrorJson(errormessage, status, entity, null);
+    	}
+		return response(status).entity( GSON.toJson(ret) ).build();		
+	}
+	
+	
+	/**
+	 * trap exceptions
+	 * @author joergp
+	 *
+	 */
 	@Provider
 	static class ExceptionMapper implements javax.ws.rs.ext.ExceptionMapper<Exception>
 	{
@@ -104,7 +156,7 @@ public class JSONResponse
 				status = (Response.Status)((WebApplicationException)e).getResponse().getStatusInfo();
 			}	
 			
-			JsonObject ret = createErrorJson(e.getMessage(), status, e);
+			JsonObject ret = createErrorJson(e.getMessage(), status, null, e);
 			return response(status).entity( GSON.toJson(ret) ).build();
 		}
 	}
