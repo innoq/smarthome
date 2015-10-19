@@ -46,7 +46,7 @@
   "error": {
     "message": "Thing yahooweather:weather:foo already exists!"
   },
-  "thing": {
+  "entity": {
     "statusInfo": {
       "status": "UNINITIALIZED",
       "statusDetail": "NONE"
@@ -98,6 +98,9 @@
   "channels": [ ]
 }
 ```
+
+## ThingResource@PUT
+* return the updated Thing
 
 
 # breaking REST API changes

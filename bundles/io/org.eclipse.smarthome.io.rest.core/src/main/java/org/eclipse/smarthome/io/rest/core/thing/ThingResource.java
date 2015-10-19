@@ -120,12 +120,10 @@ public class ThingResource implements RESTResource {
     		status = Status.CONFLICT;
     	}
 
-
-    	EnrichedThingDTO dto = EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri());
-    	
-    	return JSONResponse.createResponse(status, dto, "Thing " + thingUIDObject.toString() + " already exists!");
+    	return getThingResponse(status, thing, "Thing " + thingUIDObject.toString() + " already exists!" );
     }
 
+    
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public Response getAll() {
@@ -148,12 +146,11 @@ public class ThingResource implements RESTResource {
         //
         if (thing != null) 
         {
-        	Object entity = EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri());
-        	return JSONResponse.createResponse(Status.OK, entity, null);
+        	return getThingResponse(Status.OK, thing, null);
         } 
         else 
         {
-        	return JSONResponse.createResponse(Status.NOT_FOUND, null, "Thing " + thingUID + " does not exist!");
+        	return getThingNotFoundResponse(thingUID);
         }
     }
 
@@ -242,7 +239,7 @@ public class ThingResource implements RESTResource {
         if (thing == null) {
             logger.info("Received HTTP PUT request for update at '{}' for the unknown thing '{}'.", uriInfo.getPath(),
                     thingUID);
-            return Response.status(Status.NOT_FOUND).build();
+            return getThingNotFoundResponse(thingUID);
         }
 
         thing.setBridgeUID(bridgeUID);
@@ -250,8 +247,8 @@ public class ThingResource implements RESTResource {
         updateConfiguration(thing, getConfiguration(thingBean));
 
         managedThingProvider.update(thing);
-
-        return Response.ok().build();
+        
+        return getThingResponse(Status.OK, thing, null);
     }
 
     @PUT
@@ -272,6 +269,35 @@ public class ThingResource implements RESTResource {
         return Response.ok().build();
     }
 
+
+    
+    /**
+     * helper: Response to be sent to client if a Thing cannot be found
+     * @param thingUID
+     * @return
+     */
+    private static Response getThingNotFoundResponse( String thingUID )
+    {
+    	String message = "Thing " + thingUID + " does not exist!";
+    	return JSONResponse.createResponse( Status.NOT_FOUND, null, message);
+    }
+    
+
+    /**
+     * 
+     * @param status
+     * @param thing
+     * @param errormessage
+     * @return
+     */
+    private Response getThingResponse( Status status, Thing thing, String errormessage )
+    {
+    	Object entity = EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri());
+    	return JSONResponse.createResponse( status, entity, errormessage );
+    }
+    
+    
+    
     protected void setItemChannelLinkRegistry(ItemChannelLinkRegistry itemChannelLinkRegistry) {
         this.itemChannelLinkRegistry = itemChannelLinkRegistry;
     }
