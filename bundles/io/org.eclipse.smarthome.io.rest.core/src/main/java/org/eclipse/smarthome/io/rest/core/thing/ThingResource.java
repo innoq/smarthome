@@ -194,16 +194,27 @@ public class ThingResource implements RESTResource {
     public Response remove(@PathParam("thingUID") String thingUID,
             @DefaultValue("false") @QueryParam("force") boolean force) {
 
-        Thing removedThing = null;
-        if (force) {
-            removedThing = thingRegistry.forceRemove(new ThingUID(thingUID));
+    	ThingUID thingUIDObject = new ThingUID(thingUID); 
+    	
+    	//
+    	// check whether thing exists and throw 404 if not 
+    	//
+        Thing thing = managedThingProvider.get(thingUIDObject);
+        if (thing == null) {
+            logger.info("Received HTTP DELETE request for update at '{}' for the unknown thing '{}'.", uriInfo.getPath(), thingUID);
+            return getThingNotFoundResponse(thingUID);
+        }    	
+    	
+        if( force ) {
+            if( null == thingRegistry.forceRemove(thingUIDObject) )
+            {
+            	return getThingResponse( Status.INTERNAL_SERVER_ERROR, thing, "Cannot delete Thing " + thingUID + " for unknown reasons.");
+            }
         } else {
-            removedThing = thingRegistry.remove(new ThingUID(thingUID));
-        }
-
-        if (removedThing == null) {
-            logger.info("Received HTTP DELETE request at '{}' for the unknown thing '{}'.", uriInfo.getPath(), thingUID);
-            return Response.status(Status.NOT_FOUND).build();
+            if( null != thingRegistry.remove(thingUIDObject) )
+            {
+            	return getThingResponse( Status.ACCEPTED, thing, null );
+            }
         }
 
         return Response.ok().build();
@@ -292,7 +303,7 @@ public class ThingResource implements RESTResource {
      */
     private Response getThingResponse( Status status, Thing thing, String errormessage )
     {
-    	Object entity = EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri());
+    	Object entity = null!=thing ? EnrichedThingDTOMapper.map(thing, uriInfo.getBaseUri()) : null;
     	return JSONResponse.createResponse( status, entity, errormessage );
     }
     
