@@ -49,7 +49,7 @@ import org.eclipse.smarthome.core.thing.link.ItemChannelLink;
 import org.eclipse.smarthome.core.thing.link.ItemChannelLinkRegistry;
 import org.eclipse.smarthome.core.thing.link.ManagedItemChannelLinkProvider;
 import org.eclipse.smarthome.io.rest.RESTResource;
-import org.eclipse.smarthome.io.rest.core.internal.SmarthomeRESTExceptionMapper;
+import org.eclipse.smarthome.io.rest.core.internal.JSONResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,9 +130,9 @@ public class ThingResource implements RESTResource {
     	{
 			JsonObject ret 	= new JsonObject();
 			JsonObject err 	= new JsonObject();
-			ret.add( SmarthomeRESTExceptionMapper.JSON_KEY_ERROR, err);
+			ret.add( JSONResponse.JSON_KEY_ERROR, err);
 			
-			err.addProperty( SmarthomeRESTExceptionMapper.JSON_KEY_ERROR_MESSAGE, "Thing " + thingUIDObject.toString() + " already exists!" );
+			err.addProperty( JSONResponse.JSON_KEY_ERROR_MESSAGE, "Thing " + thingUIDObject.toString() + " already exists!" );
 			
 			// return the existing object
 			ret.add( "thing", gson.toJsonTree( dto ) );

@@ -11,7 +11,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 
 @Provider
-public class SmarthomeRESTExceptionMapper implements javax.ws.rs.ext.ExceptionMapper<Exception>
+public class JSONResponse
 {
 	public static final String JSON_KEY_ERROR_MESSAGE 	= "message";
 	public static final String JSON_KEY_ERROR 			= "error";
@@ -20,12 +20,12 @@ public class SmarthomeRESTExceptionMapper implements javax.ws.rs.ext.ExceptionMa
 	// also dump stacktrace?
 	private final static boolean WITH_STACKTRACE 		= true;
 
-	private final static Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+	final static Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	
 	/**
 	 * hide ctor a bit from public
 	 */
-	SmarthomeRESTExceptionMapper() 
+	JSONResponse() 
 	{
 	}
 	
@@ -85,23 +85,27 @@ public class SmarthomeRESTExceptionMapper implements javax.ws.rs.ext.ExceptionMa
 	}
 	
 	
-	/**
-	 * create JSON Response 
-	 */
-	@Override
-	public Response toResponse(Exception e)
+	@Provider
+	static class ExceptionMapper implements javax.ws.rs.ext.ExceptionMapper<Exception>
 	{
-		Response.Status status = Response.Status.INTERNAL_SERVER_ERROR;
-		
-		//
-		// in case the Exception is a WebApplicationException, it already carries a Status
-		//
-		if( e instanceof WebApplicationException ) 
+		/**
+		 * create JSON Response 
+		 */
+		@Override
+		public Response toResponse(Exception e)
 		{
-			status = (Response.Status)((WebApplicationException)e).getResponse().getStatusInfo();
-		}	
-		
-		JsonObject ret = createErrorJson(e.getMessage(), status, e);
-		return response(status).entity( GSON.toJson(ret) ).build();
+			Response.Status status = Response.Status.INTERNAL_SERVER_ERROR;
+			
+			//
+			// in case the Exception is a WebApplicationException, it already carries a Status
+			//
+			if( e instanceof WebApplicationException ) 
+			{
+				status = (Response.Status)((WebApplicationException)e).getResponse().getStatusInfo();
+			}	
+			
+			JsonObject ret = createErrorJson(e.getMessage(), status, e);
+			return response(status).entity( GSON.toJson(ret) ).build();
+		}
 	}
 }

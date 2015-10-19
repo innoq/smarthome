@@ -19,7 +19,7 @@ import org.osgi.framework.ServiceRegistration;
 public class RESTCoreActivator implements BundleActivator {
 
 	private static BundleContext context;
-	private ServiceRegistration<SmarthomeRESTExceptionMapper> mExcMapper;
+	private ServiceRegistration<JSONResponse.ExceptionMapper> mExcMapper;
 	
     /**
      * Called whenever the OSGi framework starts our bundle
@@ -27,7 +27,7 @@ public class RESTCoreActivator implements BundleActivator {
 	@Override
 	public void start(BundleContext bc) throws Exception {
 		context = bc;
-		mExcMapper = bc.registerService(SmarthomeRESTExceptionMapper.class, new SmarthomeRESTExceptionMapper(), null);
+		mExcMapper = bc.registerService(JSONResponse.ExceptionMapper.class, new JSONResponse.ExceptionMapper(), null);
 	}
 
     /**
