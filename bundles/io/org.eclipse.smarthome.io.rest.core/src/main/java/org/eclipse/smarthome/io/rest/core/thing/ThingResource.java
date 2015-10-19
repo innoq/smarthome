@@ -103,7 +103,7 @@ public class ThingResource implements RESTResource {
         Configuration configuration = getConfiguration(thingBean);
 
     	Status status;
-    	Thing thing = managedThingProvider.get(thingUIDObject);
+    	Thing thing = thingRegistry.get(thingUIDObject);
 
     	//
     	// does the Thing already exist?
@@ -199,7 +199,7 @@ public class ThingResource implements RESTResource {
     	//
     	// check whether thing exists and throw 404 if not 
     	//
-        Thing thing = managedThingProvider.get(thingUIDObject);
+        Thing thing = thingRegistry.get(thingUIDObject);
         if (thing == null) {
             logger.info("Received HTTP DELETE request for update at '{}' for the unknown thing '{}'.", uriInfo.getPath(), thingUID);
             return getThingNotFoundResponse(thingUID);
@@ -246,10 +246,9 @@ public class ThingResource implements RESTResource {
             bridgeUID = new ThingUID(thingBean.bridgeUID);
         }
 
-        Thing thing = managedThingProvider.get(thingUIDObject);
-        if (thing == null) {
-            logger.info("Received HTTP PUT request for update at '{}' for the unknown thing '{}'.", uriInfo.getPath(),
-                    thingUID);
+        Thing thing = thingRegistry.get(thingUIDObject);
+        if ( null == thing ) {
+            logger.info("Received HTTP PUT request for update at '{}' for the unknown thing '{}'.", uriInfo.getPath(), thingUID);
             return getThingNotFoundResponse(thingUID);
         }
 
@@ -257,8 +256,16 @@ public class ThingResource implements RESTResource {
 
         updateConfiguration(thing, getConfiguration(thingBean));
 
-        managedThingProvider.update(thing);
+        Thing oldthing = thingRegistry.update(thing);
         
+        //
+        // could not update?
+        //
+        if( null == oldthing )
+        {
+        	return getThingResponse(Status.INTERNAL_SERVER_ERROR, thing, "Could not update Thing " + thingUID + ". Maybe it belongs to a GenericThingProvider.");
+        }
+
         return getThingResponse(Status.OK, thing, null);
     }
 
