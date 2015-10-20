@@ -53,16 +53,13 @@ import org.eclipse.smarthome.io.rest.core.internal.JSONResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
-
 /**
  * This class acts as a REST resource for things and is registered with the
  * Jersey servlet.
  *
  * @author Dennis Nobel - Initial contribution
  * @author Kai Kreuzer - refactored for using the OSGi JAX-RS connector
+ * @author Jörg Plewe - refactoring, error handling
  */
 @Path(ThingResource.PATH_THINGS)
 @Produces(MediaType.APPLICATION_JSON)
