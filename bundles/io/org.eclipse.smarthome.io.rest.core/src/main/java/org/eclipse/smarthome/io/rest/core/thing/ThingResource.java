@@ -246,26 +246,44 @@ public class ThingResource implements RESTResource {
             bridgeUID = new ThingUID(thingBean.bridgeUID);
         }
 
+        //
+        // ask whether the Thing exists at all, 404 otherwise
+        //
         Thing thing = thingRegistry.get(thingUIDObject);
         if ( null == thing ) {
             logger.info("Received HTTP PUT request for update at '{}' for the unknown thing '{}'.", uriInfo.getPath(), thingUID);
             return getThingNotFoundResponse(thingUID);
         }
 
+        
+        //
+        // ask whether the Thing exists as a managed thing, so it can get updated, 409 otherwise
+        //
+        Thing managed = managedThingProvider.get(thingUIDObject);
+        if ( null == managed ) {
+            logger.info("Received HTTP PUT request for update at '{}' for an unmanaged thing '{}'.", uriInfo.getPath(), thingUID);
+        	return getThingResponse(Status.CONFLICT, thing, "Could not update Thing " + thingUID + ". Maybe it is not managed.");
+        }
+        
+        //
+        // only process if Thing is known to be managed, so it can get updated
+        //
         thing.setBridgeUID(bridgeUID);
-
         updateConfiguration(thing, getConfiguration(thingBean));
 
-        Thing oldthing = thingRegistry.update(thing);
+        // update, returns null in case of failure
+        Thing oldthing = managedThingProvider.update(thing);
         
         //
         // could not update?
         //
         if( null == oldthing )
         {
-        	return getThingResponse(Status.CONFLICT, thing, "Could not update Thing " + thingUID + ". Maybe it is not managed.");
+        	// must be an unknown error, dunno
+        	return getThingResponse( Status.INTERNAL_SERVER_ERROR, thing, "Could not update Thing " + thingUID + ". Reason is unknown.");
         }
 
+        // everything went well
         return getThingResponse(Status.OK, thing, null);
     }
 
