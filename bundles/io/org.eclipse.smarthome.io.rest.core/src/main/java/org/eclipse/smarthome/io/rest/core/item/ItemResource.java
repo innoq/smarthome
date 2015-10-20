@@ -83,6 +83,9 @@ public class ItemResource implements RESTResource {
     /** The URI path to this resource */
     public static final String PATH_ITEMS = "items";
 
+    @Context
+    UriInfo localUriInfo;
+
     private ItemRegistry itemRegistry;
     private EventPublisher eventPublisher;
     private ManagedItemProvider managedItemProvider;
@@ -165,8 +168,19 @@ public class ItemResource implements RESTResource {
     public Response getItemData(@PathParam("itemname") String itemname) {
         logger.debug("Received HTTP GET request at '{}'", uriInfo.getPath());
 
-        final Object responseObject = getItemDataBean(itemname);
-        throw new WebApplicationException(Response.ok(responseObject).build());
+        // get item
+        Item item = getItem(itemname);
+        
+        //
+        // if it exists
+        //
+        if (item != null) {
+            logger.debug("Received HTTP GET request at '{}'.", uriInfo.getPath());
+            return getItemResponse(Status.OK, item, null);
+        } else {
+            logger.info("Received HTTP GET request at '{}' for the unknown item '{}'.", uriInfo.getPath(), itemname);
+            return getItemNotFoundResponse(itemname);
+        }    
     }
 
     @PUT
@@ -191,8 +205,6 @@ public class ItemResource implements RESTResource {
         }
     }
 
-    @Context
-    UriInfo localUriInfo;
 
     @POST
     @Path("/{itemname: [a-zA-Z_0-9]*}")
@@ -482,15 +494,5 @@ public class ItemResource implements RESTResource {
             }
         }
         return beans;
-    }
-
-    private EnrichedItemDTO getItemDataBean(String itemname) {
-        Item item = getItem(itemname);
-        if (item != null) {
-            return EnrichedItemDTOMapper.map(item, true, uriInfo.getBaseUri());
-        } else {
-            logger.info("Received HTTP GET request at '{}' for the unknown item '{}'.", uriInfo.getPath(), itemname);
-            throw new WebApplicationException(404);
-        }
     }
 }
