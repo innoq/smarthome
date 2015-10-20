@@ -49,6 +49,7 @@ import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.State;
 import org.eclipse.smarthome.core.types.TypeParser;
 import org.eclipse.smarthome.io.rest.RESTResource;
+import org.eclipse.smarthome.io.rest.core.internal.JSONResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -377,26 +378,44 @@ public class ItemResource implements RESTResource {
        	newItem.addGroupNames(item.groupNames);
        	newItem.addTags(item.tags);
 
+       	EnrichedItemDTO entity = EnrichedItemDTOMapper.map(newItem, true, uriInfo.getBaseUri());
+       	
         // Save the item
         if (existingItem == null) {
-            managedItemProvider.add(newItem);
-        } else if (managedItemProvider.get(itemname) != null) {
-            managedItemProvider.update(newItem);
-        } else {
-            logger.warn("Cannot update existing item '{}', because is not managed.", itemname);
-            return Response.status(Status.METHOD_NOT_ALLOWED).build();
-        }
 
-        return Response.ok().build();
+        	//
+        	// item does not yet exist, create it
+        	//
+            managedItemProvider.add(newItem);
+            return JSONResponse.createResponse(Status.CREATED, entity, null);
+            
+        } else if (managedItemProvider.get(itemname) != null) {
+        	
+        	//
+        	// item already exists as a managed item, update it
+        	//
+            managedItemProvider.update(newItem);
+            return JSONResponse.createResponse(Status.OK, entity, null);
+            
+        } else {
+        	
+        	//
+        	// Item exists but cannot be updated
+        	//
+            logger.warn("Cannot update existing item '{}', because is not managed.", itemname);
+            return JSONResponse.createErrorResponse(Status.CONFLICT, "Cannot update non-managed Item " + itemname );
+        }
     }
 
+    
+    /**
+     * shortcut
+     * @param itemname
+     * @return
+     */
     private Item getItem(String itemname) {
-        try {
-            Item item = itemRegistry.getItem(itemname);
-            return item;
-        } catch (ItemNotFoundException ignored) {
-        }
-        return null;
+        Item item = itemRegistry.get(itemname);
+        return item;
     }
 
     private List<EnrichedItemDTO> getItemBeans(String type, String tags, boolean recursive) {

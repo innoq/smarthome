@@ -101,9 +101,19 @@
 
 ## ThingResource@PUT
 * return the updated Thing
+* return 409 (CONFLICT) in case the Thing exists but cannot be updated
 
 
+## ItemResource@PUT
+* return 201 in case of creation, 200 in case of update
+* return 409 (CONFLICT) in case the Item exists but cannot be updated
+* returns the actual JSON for the object
+
+
+
+#
 # breaking REST API changes
+#
 
 ## ThingResource@POST (implemented)
 * returns 201 instead of 200 when creation

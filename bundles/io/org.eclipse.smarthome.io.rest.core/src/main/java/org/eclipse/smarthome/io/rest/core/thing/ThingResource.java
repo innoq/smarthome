@@ -263,7 +263,7 @@ public class ThingResource implements RESTResource {
         //
         if( null == oldthing )
         {
-        	return getThingResponse(Status.INTERNAL_SERVER_ERROR, thing, "Could not update Thing " + thingUID + ". Maybe it belongs to a GenericThingProvider.");
+        	return getThingResponse(Status.CONFLICT, thing, "Could not update Thing " + thingUID + ". Maybe it is not managed.");
         }
 
         return getThingResponse(Status.OK, thing, null);
