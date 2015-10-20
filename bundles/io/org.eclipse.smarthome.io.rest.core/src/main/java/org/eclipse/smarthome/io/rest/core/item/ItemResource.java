@@ -84,6 +84,9 @@ public class ItemResource implements RESTResource {
     public static final String PATH_ITEMS = "items";
 
     @Context
+    UriInfo uriInfo;
+
+    @Context
     UriInfo localUriInfo;
 
     private ItemRegistry itemRegistry;
@@ -123,8 +126,6 @@ public class ItemResource implements RESTResource {
         this.itemFactories.remove(itemFactory);
     }
 
-    @Context
-    UriInfo uriInfo;
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
