@@ -102,6 +102,7 @@
 ## ThingResource@PUT
 * return the updated Thing
 * return 409 (CONFLICT) in case the Thing exists but cannot be updated
+* only updates Thing if it is managed, otherwise the altered Thing will remain until next openHAB reboot
 
 
 ## ItemResource@PUT
