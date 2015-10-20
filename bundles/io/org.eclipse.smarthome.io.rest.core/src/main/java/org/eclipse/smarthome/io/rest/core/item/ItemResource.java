@@ -405,8 +405,6 @@ public class ItemResource implements RESTResource {
        	newItem.addGroupNames(item.groupNames);
        	newItem.addTags(item.tags);
 
-       	// create DTO 
-       	EnrichedItemDTO entity = EnrichedItemDTOMapper.map(newItem, true, uriInfo.getBaseUri());
        	
         // Save the item
         if (existingItem == null) {
@@ -415,7 +413,7 @@ public class ItemResource implements RESTResource {
         	// item does not yet exist, create it
         	//
             managedItemProvider.add(newItem);
-            return JSONResponse.createResponse(Status.CREATED, entity, null);
+            return getItemResponse(Status.CREATED, newItem, null);
             
         } else if (managedItemProvider.get(itemname) != null) {
         	
@@ -423,7 +421,7 @@ public class ItemResource implements RESTResource {
         	// item already exists as a managed item, update it
         	//
             managedItemProvider.update(newItem);
-            return JSONResponse.createResponse(Status.OK, entity, null);
+            return getItemResponse(Status.OK, newItem, null);
             
         } else {
         	
