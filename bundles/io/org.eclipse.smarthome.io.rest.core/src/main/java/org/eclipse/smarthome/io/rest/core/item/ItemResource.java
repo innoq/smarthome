@@ -45,11 +45,13 @@ import org.eclipse.smarthome.core.library.items.RollershutterItem;
 import org.eclipse.smarthome.core.library.items.SwitchItem;
 import org.eclipse.smarthome.core.library.types.OnOffType;
 import org.eclipse.smarthome.core.library.types.UpDownType;
+import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.types.Command;
 import org.eclipse.smarthome.core.types.State;
 import org.eclipse.smarthome.core.types.TypeParser;
 import org.eclipse.smarthome.io.rest.RESTResource;
 import org.eclipse.smarthome.io.rest.core.internal.JSONResponse;
+import org.eclipse.smarthome.io.rest.core.thing.EnrichedThingDTOMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -131,17 +133,29 @@ public class ItemResource implements RESTResource {
         return Response.ok(responseObject).build();
     }
 
+    
+    /**
+     * 
+     * @param itemname
+     * @return
+     */
     @GET
     @Path("/{itemname: [a-zA-Z_0-9]*}/state")
     @Produces({ MediaType.TEXT_PLAIN })
     public Response getPlainItemState(@PathParam("itemname") String itemname) {
+    	
+    	// get item
         Item item = getItem(itemname);
+        
+        //
+        // if it exists
+        //
         if (item != null) {
             logger.debug("Received HTTP GET request at '{}'.", uriInfo.getPath());
-            throw new WebApplicationException(Response.ok(item.getState().toString()).build());
+            return JSONResponse.createResponse(Status.OK, item.getState().toString(), null);
         } else {
             logger.info("Received HTTP GET request at '{}' for the unknown item '{}'.", uriInfo.getPath(), itemname);
-            throw new WebApplicationException(404);
+            return getItemNotFoundResponse(itemname);
         }
     }
 
@@ -378,6 +392,7 @@ public class ItemResource implements RESTResource {
        	newItem.addGroupNames(item.groupNames);
        	newItem.addTags(item.tags);
 
+       	// create DTO 
        	EnrichedItemDTO entity = EnrichedItemDTOMapper.map(newItem, true, uriInfo.getBaseUri());
        	
         // Save the item
@@ -407,6 +422,32 @@ public class ItemResource implements RESTResource {
         }
     }
 
+    
+    /**
+     * helper: Response to be sent to client if a Thing cannot be found
+     * @param thingUID
+     * @return
+     */
+    private static Response getItemNotFoundResponse( String itemname )
+    {
+    	String message = "Item " + itemname + " does not exist!";
+    	return JSONResponse.createResponse( Status.NOT_FOUND, null, message);
+    }
+    
+
+    /**
+     * 
+     * @param status
+     * @param item
+     * @param errormessage
+     * @return
+     */
+    private Response getItemResponse( Status status, Item item, String errormessage )
+    {
+    	Object entity = null!=item ? EnrichedItemDTOMapper.map(item, true, uriInfo.getBaseUri()) : null;
+    	return JSONResponse.createResponse( status, entity, errormessage );
+    }    
+    
     
     /**
      * shortcut

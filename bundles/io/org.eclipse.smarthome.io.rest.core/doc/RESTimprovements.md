@@ -111,6 +111,9 @@
 * returns the actual JSON for the object
 
 
+## ItemResource@GET/state
+* return a String in any case
+
 
 #
 # breaking REST API changes

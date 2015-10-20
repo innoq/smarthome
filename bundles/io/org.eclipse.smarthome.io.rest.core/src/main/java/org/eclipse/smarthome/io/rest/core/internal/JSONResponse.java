@@ -8,7 +8,9 @@ import javax.ws.rs.ext.Provider;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 @Provider
 public class JSONResponse
@@ -48,7 +50,7 @@ public class JSONResponse
 	 * @param ex
 	 * @return
 	 */
-	private static JsonObject createErrorJson(String message, Response.Status status, Object entity, Exception ex)
+	private static JsonElement createErrorJson(String message, Response.Status status, Object entity, Exception ex)
 	{
 		JsonObject ret 	= new JsonObject();
 		JsonObject err 	= new JsonObject();
@@ -117,13 +119,12 @@ public class JSONResponse
 	 * @param errormessage
 	 * @return
 	 */
-	private final static Object NOENTITY = new Object();
 	public static Response createResponse( Response.Status status, Object entity, String errormessage )
 	{
-		JsonObject ret;
+		JsonElement ret;
     	if( status.getFamily() == Response.Status.Family.SUCCESSFUL ) 
     	{
-    		ret = GSON.toJsonTree( null!=entity ? entity : NOENTITY ).getAsJsonObject();
+    		ret = GSON.toJsonTree( entity );
     	}
     	else 
     	{
@@ -157,7 +158,7 @@ public class JSONResponse
 				status = (Response.Status)((WebApplicationException)e).getResponse().getStatusInfo();
 			}	
 			
-			JsonObject ret = createErrorJson(e.getMessage(), status, null, e);
+			JsonElement ret = createErrorJson(e.getMessage(), status, null, e);
 			return response(status).entity( GSON.toJson(ret) ).build();
 		}
 	}
