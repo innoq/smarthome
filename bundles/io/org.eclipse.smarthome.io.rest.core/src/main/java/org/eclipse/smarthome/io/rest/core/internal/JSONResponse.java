@@ -124,20 +124,26 @@ public class JSONResponse
 		JsonElement ret;
     	if( status.getFamily() == Response.Status.Family.SUCCESSFUL ) 
     	{
-    		ret = GSON.toJsonTree( entity );
+    		// create non-null JsonElement if null!=entity
+    		ret = null!=entity ? GSON.toJsonTree( entity ) : null;
     	}
     	else 
     	{
     		ret = createErrorJson(errormessage, status, entity, null);
     	}
-		return response(status).entity( GSON.toJson(ret) ).build();		
+    	
+    	//
+    	// configure response
+    	//
+    	ResponseBuilder rp = response(status);
+    	if( null != ret )	rp = rp.entity( GSON.toJson(ret) );
+		return rp.build();		
 	}
 	
 	
 	/**
 	 * trap exceptions
 	 * @author joergp
-	 *
 	 */
 	@Provider
 	static class ExceptionMapper implements javax.ws.rs.ext.ExceptionMapper<Exception>
