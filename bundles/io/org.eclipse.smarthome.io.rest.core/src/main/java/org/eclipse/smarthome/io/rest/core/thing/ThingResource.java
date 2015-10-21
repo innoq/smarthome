@@ -151,6 +151,14 @@ public class ThingResource implements RESTResource {
         }
     }
 
+    
+    /**
+     * 
+     * @param thingUID
+     * @param channelId
+     * @param itemName
+     * @return
+     */
     @POST
     @Path("/{thingUID}/channels/{channelId}/link")
     @Consumes(MediaType.TEXT_PLAIN)
@@ -160,14 +168,15 @@ public class ThingResource implements RESTResource {
         Thing thing = thingRegistry.get(new ThingUID(thingUID));
         if (thing == null) {
             logger.warn("Received HTTP POST request at '{}' for the unknown thing '{}'.", uriInfo.getPath(), thingUID);
-            return Response.status(Status.NOT_FOUND).build();
+            return getThingNotFoundResponse(thingUID);
         }
 
         Channel channel = findChannel(channelId, thing);
         if (channel == null) {
             logger.info("Received HTTP POST request at '{}' for the unknown channel '{}' of the thing '{}'",
                     uriInfo.getPath(), channel, thingUID);
-            return Response.status(Status.NOT_FOUND).build();
+        	String message = "Channel " + channelId + " for Thing " + thingUID + " does not exist!";
+        	return JSONResponse.createResponse( Status.NOT_FOUND, null, message);
         }
 
         try {
@@ -238,6 +247,14 @@ public class ThingResource implements RESTResource {
         return Response.ok().build();
     }
 
+    
+    /**
+     * 
+     * @param thingUID
+     * @param channelId
+     * @param itemName
+     * @return
+     */
     @DELETE
     @Path("/{thingUID}/channels/{channelId}/link")
     public Response unlink(@PathParam("thingUID") String thingUID, @PathParam("channelId") String channelId,
