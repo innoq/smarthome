@@ -132,6 +132,7 @@
 
 ## ThingResource@DELETE/thingUID (implemented)
 * returns 404 only in case thingUID cannot be found
+* returns 409 (CONFLICT) in case the Things exists but cannot be deleted
 * if un-forced deletion fails, return 202 (Accepted) and the still undeleted object
  * contains a link to check back later for status
 * if forced deletion fails, return 500 and the still undeleted object 

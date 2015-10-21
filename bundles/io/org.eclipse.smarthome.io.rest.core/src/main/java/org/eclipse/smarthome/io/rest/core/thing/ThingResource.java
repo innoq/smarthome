@@ -186,6 +186,13 @@ public class ThingResource implements RESTResource {
         return Response.ok().build();
     }
 
+    
+    /**
+     * 
+     * @param thingUID
+     * @param force
+     * @return
+     */
     @DELETE
     @Path("/{thingUID}")
     public Response remove(@PathParam("thingUID") String thingUID,
@@ -201,7 +208,21 @@ public class ThingResource implements RESTResource {
             logger.info("Received HTTP DELETE request for update at '{}' for the unknown thing '{}'.", uriInfo.getPath(), thingUID);
             return getThingNotFoundResponse(thingUID);
         }    	
-    	
+
+        //
+        // ask whether the Thing exists as a managed thing, so it can get updated, 409 otherwise
+        //
+        Thing managed = managedThingProvider.get(thingUIDObject);
+        if ( null == managed ) {
+            logger.info("Received HTTP DELETE request for update at '{}' for an unmanaged thing '{}'.", uriInfo.getPath(), thingUID);
+        	return getThingResponse(Status.CONFLICT, thing, "Cannot delete Thing " + thingUID + ". Maybe it is not managed.");
+        }
+
+        
+        //
+        // only move on if Thing is known to be managed, so it can get updated
+        //
+        
         if( force ) {
             if( null == thingRegistry.forceRemove(thingUIDObject) )
             {
@@ -267,7 +288,7 @@ public class ThingResource implements RESTResource {
         Thing managed = managedThingProvider.get(thingUIDObject);
         if ( null == managed ) {
             logger.info("Received HTTP PUT request for update at '{}' for an unmanaged thing '{}'.", uriInfo.getPath(), thingUID);
-        	return getThingResponse(Status.CONFLICT, thing, "Could not update Thing " + thingUID + ". Maybe it is not managed.");
+        	return getThingResponse(Status.CONFLICT, thing, "Cannot update Thing " + thingUID + ". Maybe it is not managed.");
         }
         
         //
@@ -323,10 +344,12 @@ public class ThingResource implements RESTResource {
         Thing managed = managedThingProvider.get(thingUIDObject);
         if ( null == managed ) {
             logger.info("Received HTTP PUT request for update configuration at '{}' for an unmanaged thing '{}'.", uriInfo.getPath(), thingUID);
-        	return getThingResponse(Status.CONFLICT, thing, "Could not update Thing " + thingUID + ". Maybe it is not managed.");
+        	return getThingResponse(Status.CONFLICT, thing, "Cannot update Thing " + thingUID + ". Maybe it is not managed.");
         }
         
-        
+        //
+        // only move on if Thing is known to be managed, so it can get updated
+        //        
         thingRegistry.updateConfiguration(thingUIDObject, convertDoublesToBigDecimal(configurationParameters));
 
         return getThingResponse(Status.OK, thing, null);
