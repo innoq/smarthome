@@ -138,34 +138,9 @@ public class ItemResource implements RESTResource {
     }
 
     
-    /**
-     * 
-     * @param itemname
-     * @return
-     */
-    @GET
-    @Path("/{itemname: [a-zA-Z_0-9]*}/state")
-    @Produces({ MediaType.TEXT_PLAIN })
-    public Response getPlainItemState(@PathParam("itemname") String itemname) {
-    	
-    	// get item
-        Item item = getItem(itemname);
-        
-        //
-        // if it exists
-        //
-        if (item != null) {
-            logger.debug("Received HTTP GET request at '{}'.", uriInfo.getPath());
-            return JSONResponse.createResponse(Status.OK, item.getState().toString(), null);
-        } else {
-            logger.info("Received HTTP GET request at '{}' for the unknown item '{}'.", uriInfo.getPath(), itemname);
-            return getItemNotFoundResponse(itemname);
-        }
-    }
-
     @GET
     @Path("/{itemname: [a-zA-Z_0-9]*}")
-    @Produces({ MediaType.WILDCARD })
+    @Produces( MediaType.APPLICATION_JSON )
     public Response getItemData(@PathParam("itemname") String itemname) {
         logger.debug("Received HTTP GET request at '{}'", uriInfo.getPath());
 
@@ -184,25 +159,71 @@ public class ItemResource implements RESTResource {
         }    
     }
 
+    
+    /**
+     * 
+     * @param itemname
+     * @return
+     */
+    @GET
+    @Path("/{itemname: [a-zA-Z_0-9]*}/state")
+    @Produces( MediaType.TEXT_PLAIN )
+    public Response getPlainItemState(@PathParam("itemname") String itemname) {
+    	
+    	// get item
+        Item item = getItem(itemname);
+        
+        //
+        // if it exists
+        //
+        if (item != null) {
+            logger.debug("Received HTTP GET request at '{}'.", uriInfo.getPath());
+            
+            // we cannot use JSONResponse.createResponse() bc. MediaType.TEXT_PLAIN
+            //return JSONResponse.createResponse(Status.OK, item.getState().toString(), null);
+            return Response.ok( item.getState().toString() ).build(); 
+        } else {
+            logger.info("Received HTTP GET request at '{}' for the unknown item '{}'.", uriInfo.getPath(), itemname);
+            return getItemNotFoundResponse(itemname);
+        }
+    }
+
+
     @PUT
     @Path("/{itemname: [a-zA-Z_0-9]*}/state")
     @Consumes(MediaType.TEXT_PLAIN)
     public Response putItemState(@PathParam("itemname") String itemname, String value) {
+    	
+    	// get Item
         Item item = getItem(itemname);
+        
+        // if Item exists
         if (item != null) {
+        	
+        	// try to parse a State from the input
             State state = TypeParser.parseState(item.getAcceptedDataTypes(), value);
+            
             if (state != null) {
+            	
+            	//
+            	// set State and report OK
+            	//
                 logger.debug("Received HTTP PUT request at '{}' with value '{}'.", uriInfo.getPath(), value);
                 eventPublisher.post(ItemEventFactory.createStateEvent(itemname, state));
-                return Response.ok().build();
+                return getItemResponse(Status.ACCEPTED, null, null);
+
             } else {
-                logger.warn("Received HTTP PUT request at '{}' with an invalid status value '{}'.", uriInfo.getPath(),
-                        value);
-                return Response.status(Status.BAD_REQUEST).build();
+            	
+            	//
+            	// State could not be parsed
+            	//
+                logger.warn("Received HTTP PUT request at '{}' with an invalid status value '{}'.", uriInfo.getPath(), value);
+                return JSONResponse.createErrorResponse(Status.BAD_REQUEST, "State could not be parsed!");
             }
         } else {
+        	// Item does not exist
             logger.info("Received HTTP PUT request at '{}' for the unknown item '{}'.", uriInfo.getPath(), itemname);
-            throw new WebApplicationException(404);
+            return getItemNotFoundResponse(itemname);
         }
     }
 

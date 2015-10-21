@@ -119,6 +119,13 @@
 ## ItemResource@GET/state
 * return a String in any case
 
+## ItemResource@PUT/state
+* returns 404 if Item does no exist
+* returns 400 if State cannot be parsed
+* does *not* return the updated Item, because the update will be done asynchronously
+* therefore 202 (ACCEPTED) is returned in case of success
+
+
 
 #
 # breaking REST API changes
