@@ -104,6 +104,11 @@
 * return 409 (CONFLICT) in case the Thing exists but cannot be updated
 * only updates Thing if it is managed, otherwise the altered Thing will remain until next openHAB reboot
 
+## ThingResource@PUT/config
+* return the updated Thing
+* return 409 (CONFLICT) in case the Thing exists but cannot be updated
+* only updates Thing if it is managed, otherwise the altered Thing will remain until next openHAB reboot
+* don't rely on IllegalArgumentsException to find out wether Thing exists
 
 ## ItemResource@PUT
 * return 201 in case of creation, 200 in case of update

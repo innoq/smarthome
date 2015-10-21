@@ -231,6 +231,14 @@ public class ThingResource implements RESTResource {
         return Response.ok().build();
     }
 
+    
+    /**
+     * 
+     * @param thingUID
+     * @param thingBean
+     * @return
+     * @throws IOException
+     */
     @PUT
     @Path("/{thingUID}")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -284,22 +292,44 @@ public class ThingResource implements RESTResource {
         return getThingResponse(Status.OK, thing, null);
     }
 
+    
+    /**
+     * 
+     * @param thingUID
+     * @param configurationParameters
+     * @return
+     * @throws IOException
+     */
     @PUT
     @Path("/{thingUID}/config")
     @Consumes(MediaType.APPLICATION_JSON)
     public Response updateConfiguration(@PathParam("thingUID") String thingUID,
             Map<String, Object> configurationParameters) throws IOException {
 
-        try {
-            thingRegistry.updateConfiguration(new ThingUID(thingUID),
-                    convertDoublesToBigDecimal(configurationParameters));
-        } catch (IllegalArgumentException ex) {
-            logger.info("Received HTTP PUT request for update config at '{}' for the unknown thing '{}'.",
-                    uriInfo.getPath(), thingUID);
-            return Response.status(Status.NOT_FOUND).build();
+    	ThingUID thingUIDObject = new ThingUID(thingUID);
+    	
+        //
+        // ask whether the Thing exists at all, 404 otherwise
+        //
+        Thing thing = thingRegistry.get(thingUIDObject);
+        if ( null == thing ) {
+            logger.info("Received HTTP PUT request for update configuration at '{}' for the unknown thing '{}'.", uriInfo.getPath(), thingUID);
+            return getThingNotFoundResponse(thingUID);
         }
 
-        return Response.ok().build();
+        //
+        // ask whether the Thing exists as a managed thing, so it can get updated, 409 otherwise
+        //
+        Thing managed = managedThingProvider.get(thingUIDObject);
+        if ( null == managed ) {
+            logger.info("Received HTTP PUT request for update configuration at '{}' for an unmanaged thing '{}'.", uriInfo.getPath(), thingUID);
+        	return getThingResponse(Status.CONFLICT, thing, "Could not update Thing " + thingUID + ". Maybe it is not managed.");
+        }
+        
+        
+        thingRegistry.updateConfiguration(thingUIDObject, convertDoublesToBigDecimal(configurationParameters));
+
+        return getThingResponse(Status.OK, thing, null);
     }
 
 
