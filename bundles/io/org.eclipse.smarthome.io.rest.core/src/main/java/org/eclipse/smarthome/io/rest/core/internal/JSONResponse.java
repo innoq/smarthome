@@ -20,7 +20,7 @@ public class JSONResponse
 	public static final String JSON_KEY_HTTPCODE 		= "http-code";
 
 	// also dump stacktrace?
-	private final static boolean WITH_STACKTRACE 		= true;
+	private final static boolean WITH_STACKTRACE 		= false;
 
 	final static Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	
