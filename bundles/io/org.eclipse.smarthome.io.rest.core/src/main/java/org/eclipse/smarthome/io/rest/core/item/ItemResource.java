@@ -218,7 +218,7 @@ public class ItemResource implements RESTResource {
             	// State could not be parsed
             	//
                 logger.warn("Received HTTP PUT request at '{}' with an invalid status value '{}'.", uriInfo.getPath(), value);
-                return JSONResponse.createErrorResponse(Status.BAD_REQUEST, "State could not be parsed!");
+                return JSONResponse.createErrorResponse(Status.BAD_REQUEST, "State could not be parsed: " + value);
             }
         } else {
         	// Item does not exist
