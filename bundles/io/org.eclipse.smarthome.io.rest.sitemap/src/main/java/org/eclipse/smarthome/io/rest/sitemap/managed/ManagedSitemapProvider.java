@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.eclipse.smarthome.model.sitemap.Sitemap;
+import org.eclipse.smarthome.model.sitemap.SitemapFactory;
 import org.eclipse.smarthome.model.sitemap.SitemapProvider;
 
 import org.eclipse.smarthome.core.common.registry.DefaultAbstractManagedProvider;
@@ -16,9 +17,10 @@ public class ManagedSitemapProvider extends DefaultAbstractManagedProvider<Sitem
 	@Override
 	public Sitemap getSitemap(String sitemapName) {
 		SitemapDTO dto = super.get(sitemapName);
+
+		if( null == dto ) return null;
 		
-		// TODO: create Sitemap from DTO
-		return null;
+		return dto.create();
 	}
 
 	@Override

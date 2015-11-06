@@ -1,0 +1,135 @@
+{
+  "name": "manageddemo",
+  "label": "Demo Sitemap",
+  "homepage": {
+    "id": "manageddemo",
+    "title": "Demo Sitemap",
+    "leaf": false,
+    "widgets": [
+      {
+        "type": "Frame",
+        "label": "Demo Items",
+        "icon": "frame",
+        "mappings": [],
+        "widgets": [
+          {
+            "type": "Text",
+            "label": "Contact [MAP(en.map):%s]",
+            "icon": "contact",
+            "mappings": [],
+            "item": {
+              "name": "DemoContact"
+            },
+            "widgets": []
+          },
+          {
+            "type": "Text",
+            "label": "Message [%s]",
+            "icon": "text",
+            "mappings": [],
+            "item": {
+              "name": "DemoString"
+            },
+            "widgets": []
+          },
+          {
+            "type": "Text",
+            "label": "Date [%1$tA, %1$td.%1$tm.%1$tY]",
+            "icon": "text",
+            "mappings": [],
+            "item": {
+              "name": "DemoDateTime"
+            },
+            "widgets": []
+          },
+          {
+            "type": "Group",
+            "label": "DemoSwitchGroup",
+            "icon": "switch",
+            "mappings": [],
+            "item": {
+              "name": "DemoSwitchGroup"
+            },
+            "linkedPage": {
+              "id": "0003",
+              "title": "DemoSwitchGroup",
+              "icon": "switch",
+              "leaf": true,
+              "widgets": [
+                {
+                  "type": "Switch",
+                  "label": "DemoSwitch",
+                  "icon": "switch",
+                  "mappings": [],
+                  "item": {
+                    "name": "DemoSwitch"
+                  },
+                  "widgets": []
+                },
+                {
+                  "type": "Slider",
+                  "label": "DemoDimmer",
+                  "icon": "slider",
+                  "mappings": [],
+                  "switchSupport": true,
+                  "sendFrequency": 0,
+                  "item": {
+                    "name": "DemoDimmer"
+                  },
+                  "widgets": []
+                },
+                {
+                  "type": "Colorpicker",
+                  "label": "DemoColor",
+                  "icon": "colorpicker",
+                  "mappings": [],
+                  "item": {
+                    "name": "DemoColor"
+                  },
+                  "widgets": []
+                }
+              ]
+            },
+            "widgets": []
+          }
+        ]
+      },
+      {
+        "type": "Frame",
+        "label": "Location",
+        "icon": "frame",
+        "mappings": [],
+        "widgets": [
+          {
+            "type": "Mapview",
+            "label": "DemoLocation",
+            "icon": "mapview",
+            "mappings": [],
+            "height": 10,
+            "item": {
+              "name": "DemoLocation"
+            },
+            "widgets": []
+          }
+        ]
+      },
+      {
+        "type": "Frame",
+        "label": "Weather",
+        "icon": "frame",
+        "mappings": [],
+        "widgets": [
+          {
+            "type": "Text",
+            "label": "Outside Temperature",
+            "icon": "temperature",
+            "mappings": [],
+            "item": {
+              "name": "Weather_Temperature"
+            },
+            "widgets": []
+          }
+        ]
+      }
+    ]
+  }

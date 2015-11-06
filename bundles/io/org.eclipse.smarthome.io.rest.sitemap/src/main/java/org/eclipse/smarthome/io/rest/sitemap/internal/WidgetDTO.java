@@ -12,6 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.smarthome.io.rest.core.item.EnrichedItemDTO;
+import org.eclipse.smarthome.model.sitemap.SitemapFactory;
+import org.eclipse.smarthome.model.sitemap.SitemapPackage;
+import org.eclipse.smarthome.model.sitemap.Widget;
 
 /**
  * This is a data transfer object that is used to serialize widgets.
@@ -54,4 +57,16 @@ public class WidgetDTO {
     public WidgetDTO() {
     }
 
+    Widget create() {
+    	if( type == SitemapPackage.Literals.FRAME.getName() ) {
+    		// dispatch widget creation
+    	}
+    	
+    	Widget w = SitemapFactory.eINSTANCE.createWidget();
+    	w.setIcon(icon);
+    	w.setItem(item.name);
+    	w.setLabel(label);
+    	return w;
+    }
+    
 }

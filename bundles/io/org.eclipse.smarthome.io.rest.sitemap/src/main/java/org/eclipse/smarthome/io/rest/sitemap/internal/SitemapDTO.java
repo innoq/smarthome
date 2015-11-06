@@ -7,6 +7,9 @@
  */
 package org.eclipse.smarthome.io.rest.sitemap.internal;
 
+import org.eclipse.smarthome.model.sitemap.Sitemap;
+import org.eclipse.smarthome.model.sitemap.SitemapFactory;
+
 /**
  * This is a data transfer object that is used to serialize sitemaps.
  * 
@@ -23,5 +26,18 @@ public class SitemapDTO {
     public String link;
 
     public PageDTO homepage;
+    
+    public Sitemap create() {
+		Sitemap sm = SitemapFactory.eINSTANCE.createSitemap();
+		sm.setName(name);
+		sm.setIcon(icon);
+		sm.setLabel(label);
+		
+		for( WidgetDTO wdto : homepage.widgets ) {
+			sm.getChildren().add(wdto.create() );
+		}
+		
+		return sm;
+    }
 
 }
