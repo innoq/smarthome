@@ -13,7 +13,27 @@ import org.eclipse.smarthome.io.rest.sitemap.internal.SitemapDTO;
 
 public class ManagedSitemapProvider extends DefaultAbstractManagedProvider<SitemapDTO, String> implements SitemapProvider {
 
+	public void createOrUpdate( SitemapDTO smDTO ) {
+		
+		// exists?
+		if( null != super.get( getKey(smDTO) ) ) {
+			
+			// if so, update  
+			super.update( smDTO );
+		} else {
+			
+			// if not, create
+			super.add( smDTO );
+		}
+	}
 	
+	
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	// 
+	// implement SitemapProvider
+	//
+	///////////////////////////////////////////////////////////////////////////////////////////////
+		
 	@Override
 	public Sitemap getSitemap(String sitemapName) {
 		SitemapDTO dto = super.get(sitemapName);
@@ -33,6 +53,12 @@ public class ManagedSitemapProvider extends DefaultAbstractManagedProvider<Sitem
 		}
 		return ret;
 	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	// 
+	// implement DefaultAbstractManagedProvider
+	//
+	///////////////////////////////////////////////////////////////////////////////////////////////
 
 	@Override
 	protected String getKey(SitemapDTO element) {

@@ -17,6 +17,7 @@ import java.util.Set;
 
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -38,6 +39,7 @@ import org.eclipse.smarthome.core.items.StateChangeListener;
 import org.eclipse.smarthome.core.types.State;
 import org.eclipse.smarthome.io.rest.RESTResource;
 import org.eclipse.smarthome.io.rest.core.item.EnrichedItemDTOMapper;
+import org.eclipse.smarthome.io.rest.sitemap.managed.ManagedSitemapProvider;
 import org.eclipse.smarthome.model.sitemap.Chart;
 import org.eclipse.smarthome.model.sitemap.Frame;
 import org.eclipse.smarthome.model.sitemap.Image;
@@ -82,7 +84,8 @@ public class SitemapResource implements RESTResource {
     private ItemUIRegistry itemUIRegistry;
 
     private java.util.List<SitemapProvider> sitemapProviders = new ArrayList<>();
-
+    private ManagedSitemapProvider mManagedSitemapProvider;
+    
     public void setItemUIRegistry(ItemUIRegistry itemUIRegistry) {
         this.itemUIRegistry = itemUIRegistry;
     }
@@ -99,6 +102,25 @@ public class SitemapResource implements RESTResource {
         sitemapProviders.remove(provider);
     }
 
+    public void setManagedSitemapProvider( ManagedSitemapProvider msp ) {
+    	mManagedSitemapProvider = msp;
+    }
+    public void unsetManagedSitemapProvider( ManagedSitemapProvider msp ) {
+    	mManagedSitemapProvider = null;
+    }
+    
+    private ManagedSitemapProvider findManagedSitemapProvider() {
+    	if( null == mManagedSitemapProvider ) {
+	    	for( SitemapProvider sp : sitemapProviders ) {
+	    		if( sp instanceof ManagedSitemapProvider ) {
+	    			setManagedSitemapProvider( (ManagedSitemapProvider)sp );
+	    			break;
+	    		}
+	    	}
+    	}
+    	return mManagedSitemapProvider;
+    }
+    
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public Response getSitemaps() {
@@ -118,6 +140,25 @@ public class SitemapResource implements RESTResource {
         return Response.ok(responseObject).build();
     }
 
+
+    @PUT
+    @Path("/{sitemapname: [a-zA-Z_0-9]*}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response putSitemapData(@Context HttpHeaders headers, @PathParam("sitemapname") String sitemapname, SitemapDTO sitemapDTO) {
+        logger.debug("Received HTTP GET request at '{}' for media type '{}'.", new Object[] { uriInfo.getPath(), sitemapDTO });
+
+        // 
+        // write to storage
+        //
+        ManagedSitemapProvider msp = findManagedSitemapProvider();
+        msp.createOrUpdate(sitemapDTO);
+        
+        // read back from provider and return
+        Object responseObject = getSitemapBean(sitemapname, uriInfo.getBaseUriBuilder().build());
+        return Response.ok(responseObject).build();
+    }
+    
+    
     @GET
     @Path("/{sitemapname: [a-zA-Z_0-9]*}/{pageid: [a-zA-Z_0-9]*}")
     @Produces(MediaType.APPLICATION_JSON)

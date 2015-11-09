@@ -64,7 +64,7 @@ public class WidgetDTO {
     	
     	Widget w = SitemapFactory.eINSTANCE.createWidget();
     	w.setIcon(icon);
-    	w.setItem(item.name);
+    	if( null != item )	w.setItem(item.name);
     	w.setLabel(label);
     	return w;
     }

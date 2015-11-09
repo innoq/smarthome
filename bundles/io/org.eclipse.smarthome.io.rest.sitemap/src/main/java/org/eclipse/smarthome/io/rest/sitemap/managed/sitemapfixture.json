@@ -10,43 +10,43 @@
         "type": "Frame",
         "label": "Demo Items",
         "icon": "frame",
-        "mappings": [],
+        "mappings": [ ],
         "widgets": [
           {
             "type": "Text",
             "label": "Contact [MAP(en.map):%s]",
             "icon": "contact",
-            "mappings": [],
+            "mappings": [ ],
             "item": {
               "name": "DemoContact"
             },
-            "widgets": []
+            "widgets": [ ]
           },
           {
             "type": "Text",
             "label": "Message [%s]",
             "icon": "text",
-            "mappings": [],
+            "mappings": [ ],
             "item": {
               "name": "DemoString"
             },
-            "widgets": []
+            "widgets": [ ]
           },
           {
             "type": "Text",
             "label": "Date [%1$tA, %1$td.%1$tm.%1$tY]",
             "icon": "text",
-            "mappings": [],
+            "mappings": [ ],
             "item": {
               "name": "DemoDateTime"
             },
-            "widgets": []
+            "widgets": [ ]
           },
           {
             "type": "Group",
             "label": "DemoSwitchGroup",
             "icon": "switch",
-            "mappings": [],
+            "mappings": [ ],
             "item": {
               "name": "DemoSwitchGroup"
             },
@@ -60,37 +60,37 @@
                   "type": "Switch",
                   "label": "DemoSwitch",
                   "icon": "switch",
-                  "mappings": [],
+                  "mappings": [ ],
                   "item": {
                     "name": "DemoSwitch"
                   },
-                  "widgets": []
+                  "widgets": [ ]
                 },
                 {
                   "type": "Slider",
                   "label": "DemoDimmer",
                   "icon": "slider",
-                  "mappings": [],
+                  "mappings": [ ],
                   "switchSupport": true,
                   "sendFrequency": 0,
                   "item": {
                     "name": "DemoDimmer"
                   },
-                  "widgets": []
+                  "widgets": [ ]
                 },
                 {
                   "type": "Colorpicker",
                   "label": "DemoColor",
                   "icon": "colorpicker",
-                  "mappings": [],
+                  "mappings": [ ],
                   "item": {
                     "name": "DemoColor"
                   },
-                  "widgets": []
+                  "widgets": [ ]
                 }
               ]
             },
-            "widgets": []
+            "widgets": [ ]
           }
         ]
       },
@@ -98,18 +98,18 @@
         "type": "Frame",
         "label": "Location",
         "icon": "frame",
-        "mappings": [],
+        "mappings": [ ],
         "widgets": [
           {
             "type": "Mapview",
             "label": "DemoLocation",
             "icon": "mapview",
-            "mappings": [],
+            "mappings": [ ],
             "height": 10,
             "item": {
               "name": "DemoLocation"
             },
-            "widgets": []
+            "widgets": [ ]
           }
         ]
       },
@@ -117,19 +117,21 @@
         "type": "Frame",
         "label": "Weather",
         "icon": "frame",
-        "mappings": [],
+        "mappings": [ ],
         "widgets": [
           {
             "type": "Text",
             "label": "Outside Temperature",
             "icon": "temperature",
-            "mappings": [],
+            "mappings": [ ],
             "item": {
               "name": "Weather_Temperature"
             },
-            "widgets": []
+            "widgets": [ ]
           }
         ]
       }
     ]
   }
+}
+
