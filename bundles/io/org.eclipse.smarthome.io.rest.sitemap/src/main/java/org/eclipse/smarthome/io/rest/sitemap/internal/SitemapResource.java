@@ -109,17 +109,6 @@ public class SitemapResource implements RESTResource {
     	mManagedSitemapProvider = null;
     }
     
-    private ManagedSitemapProvider findManagedSitemapProvider() {
-    	if( null == mManagedSitemapProvider ) {
-	    	for( SitemapProvider sp : sitemapProviders ) {
-	    		if( sp instanceof ManagedSitemapProvider ) {
-	    			setManagedSitemapProvider( (ManagedSitemapProvider)sp );
-	    			break;
-	    		}
-	    	}
-    	}
-    	return mManagedSitemapProvider;
-    }
     
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -150,8 +139,7 @@ public class SitemapResource implements RESTResource {
         // 
         // write to storage
         //
-        ManagedSitemapProvider msp = findManagedSitemapProvider();
-        msp.createOrUpdate(sitemapDTO);
+        mManagedSitemapProvider.createOrUpdate(sitemapDTO);
         
         // read back from provider and return
         Object responseObject = getSitemapBean(sitemapname, uriInfo.getBaseUriBuilder().build());

@@ -12,6 +12,8 @@
 	<implementation class="org.eclipse.smarthome.io.rest.sitemap.managed.ManagedSitemapProvider"/>
 	<service>
 		<provide interface="org.eclipse.smarthome.model.sitemap.SitemapProvider"/>
+		<!-- provide concrete class as a service so it can be addressed directly -->
+		<provide interface="org.eclipse.smarthome.io.rest.sitemap.managed.ManagedSitemapProvider"/>
 	</service>
 	<reference bind="setStorageService" cardinality="1..1" interface="org.eclipse.smarthome.core.storage.StorageService" name="StorageService" policy="static" unbind="unsetStorageService"/>
 </scr:component>
