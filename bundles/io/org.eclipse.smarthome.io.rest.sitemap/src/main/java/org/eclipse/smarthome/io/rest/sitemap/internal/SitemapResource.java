@@ -18,6 +18,7 @@ import java.util.Set;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.PUT;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -134,17 +135,29 @@ public class SitemapResource implements RESTResource {
     @Path("/{sitemapname: [a-zA-Z_0-9]*}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response putSitemapData(@Context HttpHeaders headers, @PathParam("sitemapname") String sitemapname, SitemapDTO sitemapDTO) {
-        logger.debug("Received HTTP GET request at '{}' for media type '{}'.", new Object[] { uriInfo.getPath(), sitemapDTO });
+        logger.debug("Received HTTP PUT request at '{}' for sitemap '{}'.", uriInfo.getPath(), sitemapDTO);
 
-        // 
         // write to storage
-        //
         mManagedSitemapProvider.createOrUpdate(sitemapDTO);
         
         // read back from provider and return
         Object responseObject = getSitemapBean(sitemapname, uriInfo.getBaseUriBuilder().build());
         return Response.ok(responseObject).build();
     }
+
+    
+    @DELETE
+    @Path("/{sitemapname: [a-zA-Z_0-9]*}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response deleteSitemap(@Context HttpHeaders headers, @PathParam("sitemapname") String sitemapname) {
+        logger.debug("Received HTTP DELETE request at '{}' for sitemap '{}'.", uriInfo.getPath(), sitemapname);
+
+        // delete from storage
+        mManagedSitemapProvider.remove(sitemapname);
+        
+        return Response.ok().build();
+    }
+    
     
     
     @GET
