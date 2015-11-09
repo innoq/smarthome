@@ -7,14 +7,12 @@
  */
 package org.eclipse.smarthome.io.rest.sitemap.internal;
 
+import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.List;
 
 import org.eclipse.smarthome.io.rest.core.item.EnrichedItemDTO;
-import org.eclipse.smarthome.model.sitemap.SitemapFactory;
-import org.eclipse.smarthome.model.sitemap.SitemapPackage;
-import org.eclipse.smarthome.model.sitemap.Widget;
+import org.eclipse.smarthome.model.sitemap.*;
 
 /**
  * This is a data transfer object that is used to serialize widgets.
@@ -35,7 +33,7 @@ public class WidgetDTO {
     public String valuecolor;
 
     // widget-specific attributes
-    public List<MappingDTO> mappings = new ArrayList<MappingDTO>();
+    public ArrayList<MappingDTO> mappings = new ArrayList<MappingDTO>();
     public Boolean switchSupport;
     public Integer sendFrequency;
     public String separator;
@@ -52,21 +50,149 @@ public class WidgetDTO {
     public PageDTO linkedPage;
 
     // only for frames, other linkable widgets link to a page
-    public final List<WidgetDTO> widgets = new ArrayList<WidgetDTO>();
+    public final ArrayList<WidgetDTO> widgets = new ArrayList<WidgetDTO>();
 
     public WidgetDTO() {
     }
 
+    
+    /**
+     * create a Widget model object from the attributes
+     * @return
+     */
     Widget create() {
-    	if( type == SitemapPackage.Literals.FRAME.getName() ) {
-    		// dispatch widget creation
+    	
+    	//
+    	// dispatch linkable widgets
+    	//
+    	if( SitemapPackage.Literals.FRAME.getName().equals(type) ) {
+    		Frame w = setupWidget( SitemapFactory.eINSTANCE.createFrame() );
+    		setupLinkableWidget(w);
+    		return w;
+    	}
+    	else if( SitemapPackage.Literals.TEXT.getName().equals(type) ) {
+    		Text w = setupWidget( SitemapFactory.eINSTANCE.createText() );
+    		setupLinkableWidget(w);
+    		return w;
+    	}
+    	else if( SitemapPackage.Literals.GROUP.getName().equals(type) ) {
+    		Group w = setupWidget( SitemapFactory.eINSTANCE.createGroup() );
+    		setupLinkableWidget(w);
+    		return w;
+    	}
+    	else if( SitemapPackage.Literals.IMAGE.getName().equals(type) ) {
+    		Image w = setupWidget( SitemapFactory.eINSTANCE.createImage() );
+    		setupLinkableWidget(w);
+    		w.setUrl(url);
+    		w.setRefresh(refresh);
+    		return w;
+    	}
+    	//
+    	// dispatch nonlinkable widgets
+    	//
+    	else if( SitemapPackage.Literals.CHART.getName().equals(type) ) {
+    		Chart w = setupWidget( SitemapFactory.eINSTANCE.createChart() );
+    		w.setRefresh(refresh);
+    		w.setPeriod(period);
+    		w.setService(service);
+    		return w;
+    	}
+    	else if( SitemapPackage.Literals.COLORPICKER.getName().equals(type) ) {
+    		Colorpicker w = setupWidget( SitemapFactory.eINSTANCE.createColorpicker() );
+    		// ?? Colorpicker not supported in SitemapResource.createWidgetBean()
+    		w.setFrequency(sendFrequency);
+    		return w;
+    	}
+    	else if( SitemapPackage.Literals.LIST.getName().equals(type) ) {
+    		List w = setupWidget( SitemapFactory.eINSTANCE.createList() );
+    		w.setSeparator(separator);
+    		return w;
+    	}
+    	else if( SitemapPackage.Literals.MAPVIEW.getName().equals(type) ) {
+    		Mapview w = setupWidget( SitemapFactory.eINSTANCE.createMapview() );
+    		w.setHeight(height);
+    		return w;
+    	}
+    	else if( SitemapPackage.Literals.SELECTION.getName().equals(type) ) {
+    		Selection w = setupWidget( SitemapFactory.eINSTANCE.createSelection() );
+    		for( MappingDTO mDTO : mappings ) {
+    			w.getMappings().add( mDTO.create() );
+    		}
+    		return w;
+    	}
+    	else if( SitemapPackage.Literals.SWITCH.getName().equals(type) ) {
+    		Switch w = setupWidget( SitemapFactory.eINSTANCE.createSwitch() );
+    		for( MappingDTO mDTO : mappings ) {
+    			w.getMappings().add( mDTO.create() );
+    		}
+    		return w;
+    	}
+    	else if( SitemapPackage.Literals.SETPOINT.getName().equals(type) ) {
+    		Setpoint w = setupWidget( SitemapFactory.eINSTANCE.createSetpoint() );
+    		w.setMinValue(minValue);
+    		w.setMaxValue(maxValue);
+    		w.setStep(step);
+    		return w;
+    	}
+    	else if( SitemapPackage.Literals.SLIDER.getName().equals(type) ) {
+    		Slider w = setupWidget( SitemapFactory.eINSTANCE.createSlider() );
+    		w.setFrequency(sendFrequency);
+    		w.setSwitchEnabled(switchSupport);
+    		return w;
+    	}
+    	else if( SitemapPackage.Literals.VIDEO.getName().equals(type) ) {
+    		Video w = setupWidget( SitemapFactory.eINSTANCE.createVideo() );
+    		w.setUrl(url);
+    		return w;
+    	}
+    	else if( SitemapPackage.Literals.WEBVIEW.getName().equals(type) ) {
+    		Webview w = setupWidget( SitemapFactory.eINSTANCE.createWebview() );
+    		w.setHeight(height);
+    		w.setUrl(url);
+    		return w;
     	}
     	
-    	Widget w = SitemapFactory.eINSTANCE.createWidget();
+    	// fallback if no specific type could be identified
+    	return setupWidget( SitemapFactory.eINSTANCE.createWidget() );
+    }
+
+    
+    private <T extends Widget> T setupWidget( T w ) {
+    	
+    	//
+    	// set basic properties
+    	//
     	w.setIcon(icon);
-    	if( null != item )	w.setItem(item.name);
     	w.setLabel(label);
+    	if( null != item )	
+    		w.setItem(item.name);
+
+    	boolean understood_what_it_is = false;
+    	if( understood_what_it_is ) {
+			ColorArray lca = SitemapFactory.eINSTANCE.createColorArray();
+			w.getLabelColor().add( lca );
+	    	
+			ColorArray vca = SitemapFactory.eINSTANCE.createColorArray();
+			w.getValueColor().add( vca );
+	    	
+			VisibilityRule vr = SitemapFactory.eINSTANCE.createVisibilityRule();
+			w.getVisibility().add(vr);
+    	}
+    	
     	return w;
     }
     
+    
+    private <T extends LinkableWidget> T setupLinkableWidget( T w ) {
+    	
+    	//
+    	// fill list of children
+    	//
+    	for( WidgetDTO wdto : widgets ) {
+    		w.getChildren().add( wdto.create() );
+    	}
+    	
+    	return w;
+    }
+
 }

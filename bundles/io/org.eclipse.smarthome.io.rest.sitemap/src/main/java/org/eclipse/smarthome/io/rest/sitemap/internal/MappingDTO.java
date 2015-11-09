@@ -7,6 +7,9 @@
  */
 package org.eclipse.smarthome.io.rest.sitemap.internal;
 
+import org.eclipse.smarthome.model.sitemap.Mapping;
+import org.eclipse.smarthome.model.sitemap.SitemapFactory;
+
 /**
  * This is a data transfer object that is used to serialize command mappings.
  * 
@@ -20,5 +23,15 @@ public class MappingDTO {
 
     public MappingDTO() {
     }
+
+    
+	public Mapping create() {
+		
+		Mapping m = SitemapFactory.eINSTANCE.createMapping();
+		m.setCmd(command);
+		m.setLabel(label);
+		
+		return m;
+	}
 
 }
