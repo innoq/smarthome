@@ -137,6 +137,9 @@ public class SitemapResource implements RESTResource {
     public Response putSitemapData(@Context HttpHeaders headers, @PathParam("sitemapname") String sitemapname, SitemapDTO sitemapDTO) {
         logger.debug("Received HTTP PUT request at '{}' for sitemap '{}'.", uriInfo.getPath(), sitemapDTO);
 
+        // make sure URI and content are in sync, the storage key will be taken from the DTO!
+        sitemapDTO.name = sitemapname;
+        
         // write to storage
         mManagedSitemapProvider.createOrUpdate(sitemapDTO);
         
