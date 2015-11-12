@@ -301,9 +301,20 @@ public class SitemapResource implements RESTResource {
             return null;
 
         WidgetDTO bean = new WidgetDTO();
-        if (widget.getItem() != null) {
+        
+        //
+        // insert item data
+        //
+        String itemname = widget.getItem();
+        if ( itemname != null) {
+        	// in any case, remember the itemname
+        	bean.itemname = itemname;
+        	
+        	//
+        	// if the item currently exists, embed it
+        	//
             try {
-                Item item = itemUIRegistry.getItem(widget.getItem());
+                Item item = itemUIRegistry.getItem(itemname);
                 if (item != null) {
                     bean.item = EnrichedItemDTOMapper.map(item, false, UriBuilder.fromUri(uri).build());
                 }
@@ -311,12 +322,14 @@ public class SitemapResource implements RESTResource {
                 logger.debug(e.getMessage());
             }
         }
+        
         bean.widgetId = widgetId;
         bean.icon = itemUIRegistry.getCategory(widget);
         bean.labelcolor = itemUIRegistry.getLabelColor(widget);
         bean.valuecolor = itemUIRegistry.getValueColor(widget);
         bean.label = itemUIRegistry.getLabel(widget);
         bean.type = widget.eClass().getName();
+        
         if (widget instanceof LinkableWidget) {
             LinkableWidget linkableWidget = (LinkableWidget) widget;
             EList<Widget> children = itemUIRegistry.getChildren(linkableWidget);

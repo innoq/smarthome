@@ -46,7 +46,10 @@ public class WidgetDTO {
     public String service;
     public String period;
 
+    public String itemname;			// explicit name of the linked item, same as item.name, used mainly for PUTs, where the item DTO might not be present
     public EnrichedItemDTO item;
+    
+    // in case the widget is not a Frame, it's children get rendered as an own page
     public PageDTO linkedPage;
 
     // only for frames, other linkable widgets link to a page
@@ -157,6 +160,11 @@ public class WidgetDTO {
     }
 
     
+    /**
+     * basic configuration of a widget: icon, label, itemname
+     * @param w
+     * @return
+     */
     private <T extends Widget> T setupWidget( T w ) {
     	
     	//
@@ -164,8 +172,7 @@ public class WidgetDTO {
     	//
     	w.setIcon(icon);
     	w.setLabel(label);
-    	if( null != item )	
-    		w.setItem(item.name);
+    	w.setItem(itemname); // remember item name from the explicit attribute bc. this.item might be missing
 
     	boolean understood_what_it_is = false;
     	if( understood_what_it_is ) {
@@ -183,7 +190,23 @@ public class WidgetDTO {
     }
     
     
+    /**
+     * configure children of a LinkableWidget
+     * @param w
+     * @return
+     */
     private <T extends LinkableWidget> T setupLinkableWidget( T w ) {
+    	
+    	//
+    	// There might be linkedPage in case of w not being a Frame. 
+    	// This linkedPage also contains the sub-widgets rendered for w on GET. These subwidgets might
+    	// be dynamically enumerated from the members of a GroupItem in case no explicit children are 
+    	// configured in the Widget itself (see ItemUIRegistryImpl#getChildren and ItemUIRegistryImpl#getDynamicGroupChildren).
+    	//
+    	// The children of the linkedPage are ignored here. In case subwidgets have to be created, the caller
+    	// must place them in the widgets array.
+    	// In case the subwidgets shall be dynamically enumerated, make sure widgets array is empty.
+    	//
     	
     	//
     	// fill list of children
