@@ -52,9 +52,13 @@ public class WidgetDTO {
     // in case the widget is not a Frame, it's children get rendered as an own page
     public PageDTO linkedPage;
 
-    // only for frames, other linkable widgets link to a page
+    // only for Frames, other LinkableWidgets use linkedPage to contain the subwidgets
     public final ArrayList<WidgetDTO> widgets = new ArrayList<WidgetDTO>();
 
+    public final ArrayList<ColorArrayDTO> labelcolors = new ArrayList<>();
+    public final ArrayList<ColorArrayDTO> valuecolors = new ArrayList<>();
+    
+    
     public WidgetDTO() {
     }
 
@@ -161,7 +165,7 @@ public class WidgetDTO {
 
     
     /**
-     * basic configuration of a widget: icon, label, itemname
+     * basic configuration of a widget: icon, label, itemname, labelcolor, valuecolor
      * @param w
      * @return
      */
@@ -174,14 +178,20 @@ public class WidgetDTO {
     	w.setLabel(label);
     	w.setItem(itemname); // remember item name from the explicit attribute bc. this.item might be missing
 
+    	//
+    	// if there is an item, label and value colors can be configured
+    	//
+    	if( null != itemname ) {
+	    	for( ColorArrayDTO caDTO : labelcolors ) {
+				w.getLabelColor().add( caDTO.create() );    		
+	    	}
+	    	for( ColorArrayDTO caDTO : valuecolors ) {
+				w.getValueColor().add( caDTO.create() );    		
+	    	}
+    	}
+
     	boolean understood_what_it_is = false;
     	if( understood_what_it_is ) {
-			ColorArray lca = SitemapFactory.eINSTANCE.createColorArray();
-			w.getLabelColor().add( lca );
-	    	
-			ColorArray vca = SitemapFactory.eINSTANCE.createColorArray();
-			w.getValueColor().add( vca );
-	    	
 			VisibilityRule vr = SitemapFactory.eINSTANCE.createVisibilityRule();
 			w.getVisibility().add(vr);
     	}

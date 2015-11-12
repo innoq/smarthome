@@ -42,6 +42,7 @@ import org.eclipse.smarthome.io.rest.RESTResource;
 import org.eclipse.smarthome.io.rest.core.item.EnrichedItemDTOMapper;
 import org.eclipse.smarthome.io.rest.sitemap.managed.ManagedSitemapProvider;
 import org.eclipse.smarthome.model.sitemap.Chart;
+import org.eclipse.smarthome.model.sitemap.ColorArray;
 import org.eclipse.smarthome.model.sitemap.Frame;
 import org.eclipse.smarthome.model.sitemap.Image;
 import org.eclipse.smarthome.model.sitemap.LinkableWidget;
@@ -329,6 +330,20 @@ public class SitemapResource implements RESTResource {
         bean.valuecolor = itemUIRegistry.getValueColor(widget);
         bean.label = itemUIRegistry.getLabel(widget);
         bean.type = widget.eClass().getName();
+        
+        //
+        // render labelcolors
+        //
+        for( ColorArray ca : widget.getLabelColor() ) {
+        	bean.labelcolors.add( new ColorArrayDTO( ca ) );
+        }
+        
+        //
+        // render valuecolors
+        //
+        for( ColorArray ca : widget.getValueColor() ) {
+        	bean.valuecolors.add( new ColorArrayDTO( ca ) );
+        }
         
         if (widget instanceof LinkableWidget) {
             LinkableWidget linkableWidget = (LinkableWidget) widget;

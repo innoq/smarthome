@@ -18,7 +18,41 @@
             "icon": "contact",
             "mappings": [ ],
             "itemname": "DemoContact",
-            "widgets": [ ]
+            "widgets": [ ],
+            "valuecolors": [
+              {
+                "arg": "lightgray",
+                "state": "\"NULL\"",
+                "condition": "==",
+                "itemname": "DemoContact"
+              },
+              {
+                "arg": "lightgray",
+                "state": "90",
+                "condition": ">",
+                "itemname": "DemoContact"
+              },
+              {
+                "arg": "orange",
+                "state": "25",
+                "condition": ">"
+              },
+              {
+                "arg": "green",
+                "state": "15",
+                "condition": ">"
+              },
+              {
+                "arg": "orange",
+                "state": "5",
+                "condition": ">"
+              },
+              {
+                "arg": "blue",
+                "state": "5",
+                "condition": "<="
+              }
+            ]
           },
           {
             "type": "Text",
