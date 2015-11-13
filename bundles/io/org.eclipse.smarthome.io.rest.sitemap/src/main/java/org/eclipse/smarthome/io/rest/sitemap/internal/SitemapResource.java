@@ -298,12 +298,18 @@ public class SitemapResource implements RESTResource {
     }
 
     private WidgetDTO createWidgetBean(String sitemapName, Widget widget, boolean drillDown, URI uri, String widgetId) {
-        // Test visibility
-        if (itemUIRegistry.getVisiblity(widget) == false)
-            return null;
 
-        WidgetDTO bean = new WidgetDTO();
+    	// Test visibility
+// no longer prohibit rendering of invisible widgets, use bean.visibility instead
+//        if (itemUIRegistry.getVisiblity(widget) == false)
+//            return null;
         
+    	// create the bean
+        WidgetDTO bean = new WidgetDTO();
+
+        // tell about the visibility state
+        bean.visibility = itemUIRegistry.getVisiblity(widget) ? WidgetDTO.Visibility.ACTIVE : WidgetDTO.Visibility.INVISIBLE;
+
         //
         // insert item data
         //

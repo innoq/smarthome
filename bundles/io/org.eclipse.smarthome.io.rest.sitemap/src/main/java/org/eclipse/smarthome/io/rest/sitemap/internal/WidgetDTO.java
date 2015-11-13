@@ -12,6 +12,7 @@ import java.util.ArrayList;
 
 import org.eclipse.smarthome.io.rest.core.item.EnrichedItemDTO;
 import org.eclipse.smarthome.model.sitemap.*;
+import org.omg.PortableInterceptor.INACTIVE;
 
 /**
  * This is a data transfer object that is used to serialize widgets.
@@ -58,6 +59,16 @@ public class WidgetDTO {
     public final ArrayList<ColorArrayDTO> labelcolors = new ArrayList<>();
     public final ArrayList<ColorArrayDTO> valuecolors = new ArrayList<>();
     public final ArrayList<VisibilityRuleDTO> visibilityrules = new ArrayList<>();
+
+    
+    public enum Visibility {
+    	INVISIBLE,
+    	INACTIVE,
+    	ACTIVE
+    }
+        
+    public Visibility visibility;
+    
     
     public WidgetDTO() {
     }
