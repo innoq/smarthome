@@ -329,6 +329,7 @@ public class SitemapResource implements RESTResource {
         bean.icon = itemUIRegistry.getCategory(widget);
         bean.labelcolor = itemUIRegistry.getLabelColor(widget);
         bean.valuecolor = itemUIRegistry.getValueColor(widget);
+        bean.labelformat = widget.getLabel();
         bean.label = itemUIRegistry.getLabel(widget);
         bean.type = widget.eClass().getName();
         

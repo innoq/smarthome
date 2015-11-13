@@ -26,7 +26,8 @@ public class WidgetDTO {
     public String type;
     public String name;
 
-    public String label;
+    public String label;		// rendered label ready for display 
+    public String labelformat;	// label format used for label rendering
     public String icon;
     public String labelcolor;
     public String valuecolor;
@@ -174,7 +175,7 @@ public class WidgetDTO {
     	// set basic properties
     	//
     	w.setIcon(icon);
-    	w.setLabel(label);
+    	w.setLabel(labelformat);
     	w.setItem(itemname); // remember item name from the explicit attribute bc. this.item might be missing
 
     	//

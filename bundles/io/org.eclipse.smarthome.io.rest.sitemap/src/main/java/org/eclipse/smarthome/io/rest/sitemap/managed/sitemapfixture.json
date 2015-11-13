@@ -14,7 +14,7 @@
         "widgets": [
           {
             "type": "Text",
-            "label": "Contact [MAP(en.map):%s]",
+            "labelformat": "Contact [MAP(en.map):%s]",
             "icon": "contact",
             "mappings": [ ],
             "itemname": "DemoContact",
@@ -63,7 +63,7 @@
           },
           {
             "type": "Text",
-            "label": "Message [%s]",
+            "labelformat": "Message [%s]",
             "icon": "text",
             "mappings": [ ],
             "itemname": "DemoString",
@@ -71,7 +71,7 @@
           },
           {
             "type": "Text",
-            "label": "Date [%1$tA, %1$td.%1$tm.%1$tY]",
+            "labelformat": "Date [%1$tA, %1$td.%1$tm.%1$tY]",
             "icon": "text",
             "mappings": [ ],
             "itemname": "DemoDateTime",
@@ -79,7 +79,6 @@
           },
           {
             "type": "Group",
-            "label": "DemoSwitchGroup",
             "icon": "switch",
             "mappings": [ ],
             "itemname": "DemoSwitchGroup",
@@ -91,7 +90,6 @@
               "widgets": [
                 {
                   "type": "Switch",
-                  "label": "DemoSwitch",
                   "icon": "switch",
                   "mappings": [ ],
                   "itemname": "DemoSwitch",
@@ -99,7 +97,6 @@
                 },
                 {
                   "type": "Slider",
-                  "label": "DemoDimmer",
                   "icon": "slider",
                   "mappings": [ ],
                   "switchSupport": true,
@@ -109,7 +106,6 @@
                 },
                 {
                   "type": "Colorpicker",
-                  "label": "DemoColor",
                   "icon": "colorpicker",
                   "mappings": [ ],
                   "itemname": "DemoColor",
@@ -123,13 +119,12 @@
       },
       {
         "type": "Frame",
-        "label": "Location",
+        "labelformat": "Location",
         "icon": "frame",
         "mappings": [ ],
         "widgets": [
           {
             "type": "Mapview",
-            "label": "DemoLocation",
             "icon": "mapview",
             "mappings": [ ],
             "height": 10,
@@ -140,13 +135,12 @@
       },
       {
         "type": "Frame",
-        "label": "Weather",
+        "labelformat": "Weather",
         "icon": "frame",
         "mappings": [ ],
         "widgets": [
           {
             "type": "Text",
-            "label": "Outside Temperature",
             "icon": "temperature",
             "mappings": [ ],
             "itemname": "Weather_Temperature",
