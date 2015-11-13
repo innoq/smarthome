@@ -7,7 +7,6 @@
  */
 package org.eclipse.smarthome.io.rest.sitemap.internal;
 
-import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 
@@ -57,7 +56,7 @@ public class WidgetDTO {
 
     public final ArrayList<ColorArrayDTO> labelcolors = new ArrayList<>();
     public final ArrayList<ColorArrayDTO> valuecolors = new ArrayList<>();
-    
+    public final ArrayList<VisibilityRuleDTO> visibilityrules = new ArrayList<>();
     
     public WidgetDTO() {
     }
@@ -179,21 +178,20 @@ public class WidgetDTO {
     	w.setItem(itemname); // remember item name from the explicit attribute bc. this.item might be missing
 
     	//
-    	// if there is an item, label and value colors can be configured
+    	// configure label and value colors
     	//
-    	if( null != itemname ) {
-	    	for( ColorArrayDTO caDTO : labelcolors ) {
-				w.getLabelColor().add( caDTO.create() );    		
-	    	}
-	    	for( ColorArrayDTO caDTO : valuecolors ) {
-				w.getValueColor().add( caDTO.create() );    		
-	    	}
+    	for( ColorArrayDTO caDTO : labelcolors ) {
+			w.getLabelColor().add( caDTO.create() );    		
+    	}
+    	for( ColorArrayDTO caDTO : valuecolors ) {
+			w.getValueColor().add( caDTO.create() );    		
     	}
 
-    	boolean understood_what_it_is = false;
-    	if( understood_what_it_is ) {
-			VisibilityRule vr = SitemapFactory.eINSTANCE.createVisibilityRule();
-			w.getVisibility().add(vr);
+    	//
+    	// configure visibility rules
+    	//
+    	for( VisibilityRuleDTO vrDTO : visibilityrules ) {
+    		w.getVisibility().add( vrDTO.create() );
     	}
     	
     	return w;

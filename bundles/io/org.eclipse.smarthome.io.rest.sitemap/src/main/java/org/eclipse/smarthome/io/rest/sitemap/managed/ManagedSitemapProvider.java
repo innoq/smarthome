@@ -13,7 +13,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.eclipse.smarthome.model.sitemap.Sitemap;
-import org.eclipse.smarthome.model.sitemap.SitemapFactory;
 import org.eclipse.smarthome.model.sitemap.SitemapProvider;
 
 import org.eclipse.smarthome.core.common.registry.DefaultAbstractManagedProvider;

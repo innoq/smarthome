@@ -56,6 +56,7 @@ import org.eclipse.smarthome.model.sitemap.SitemapProvider;
 import org.eclipse.smarthome.model.sitemap.Slider;
 import org.eclipse.smarthome.model.sitemap.Switch;
 import org.eclipse.smarthome.model.sitemap.Video;
+import org.eclipse.smarthome.model.sitemap.VisibilityRule;
 import org.eclipse.smarthome.model.sitemap.Webview;
 import org.eclipse.smarthome.model.sitemap.Widget;
 import org.eclipse.smarthome.ui.items.ItemUIRegistry;
@@ -344,6 +345,15 @@ public class SitemapResource implements RESTResource {
         for( ColorArray ca : widget.getValueColor() ) {
         	bean.valuecolors.add( new ColorArrayDTO( ca ) );
         }
+        
+        //
+        // render visibilityrules
+        //
+        for( VisibilityRule vr : widget.getVisibility() ) {
+        	bean.visibilityrules.add( new VisibilityRuleDTO( vr ) );
+        }
+        
+        
         
         if (widget instanceof LinkableWidget) {
             LinkableWidget linkableWidget = (LinkableWidget) widget;

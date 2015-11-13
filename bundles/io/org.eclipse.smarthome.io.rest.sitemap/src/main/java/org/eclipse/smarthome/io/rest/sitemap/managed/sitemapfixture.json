@@ -19,6 +19,13 @@
             "mappings": [ ],
             "itemname": "DemoContact",
             "widgets": [ ],
+            "visibilityrules": [
+            	{
+                  "state": "OPEN",
+                  "condition": "==",
+                  "itemname": "DemoContact"
+                }
+            ],
             "valuecolors": [
               {
                 "arg": "lightgray",
