@@ -59,7 +59,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Dennis Nobel - Initial contribution
  * @author Kai Kreuzer - refactored for using the OSGi JAX-RS connector
- * @author Jörg Plewe - refactoring, error handling
+ * @author JÃ¶rg Plewe - refactoring, error handling
  */
 @Path(ThingResource.PATH_THINGS)
 @Produces(MediaType.APPLICATION_JSON)
