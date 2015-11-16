@@ -317,16 +317,13 @@ public class ThingResource implements RESTResource {
         thing.setBridgeUID(bridgeUID);
         updateConfiguration(thing, getConfiguration(thingBean));
 
-        // update, returns null in case of failure
+        //
+        // update, returns null in case Thing cannot be found
+        //
         Thing oldthing = managedThingProvider.update(thing);
-        
-        //
-        // could not update?
-        //
         if( null == oldthing )
         {
-        	// must be an unknown error, dunno
-        	return getThingResponse( Status.INTERNAL_SERVER_ERROR, thing, "Could not update Thing " + thingUID + ". Reason is unknown.");
+            return getThingNotFoundResponse(thingUID);
         }
 
         // everything went well
