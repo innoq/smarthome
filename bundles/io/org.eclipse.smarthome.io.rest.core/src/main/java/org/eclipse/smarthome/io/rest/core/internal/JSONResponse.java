@@ -18,8 +18,11 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 
+/**
+ * Static helper methods to build up JSON-like Response objects and error handling.
+ * @author Joerg Plewe
+ */
 @Provider
 public class JSONResponse
 {
@@ -42,7 +45,7 @@ public class JSONResponse
 	/**
 	 * basic configuration of a ResponseBuilder
 	 * @param status
-	 * @return
+	 * @return ResponseBuilder configured for "Content-Type" MediaType.APPLICATION_JSON
 	 */
 	private static ResponseBuilder response(Response.Status status)
 	{
@@ -100,7 +103,9 @@ public class JSONResponse
 				exc.addProperty( "cause", 				null!=ex.getCause() ? ex.getCause().getClass().getName() : null );
 				
 				if( WITH_STACKTRACE )
+				{
 					exc.add(	 "stacktrace", 			GSON.toJsonTree( ex.getStackTrace() ) );
+				}
 			}
 		}
 		
@@ -112,7 +117,7 @@ public class JSONResponse
 	 * in case of error (404 and such)
 	 * @param status
 	 * @param errormessage
-	 * @return
+	 * @return Response containing a status and the errormessage in JSON format
 	 */
 	public static Response createErrorResponse( Response.Status status, String errormessage )
 	{
@@ -121,11 +126,12 @@ public class JSONResponse
 	
 	
 	/**
-	 * 
+	 * Depending in the status, create a Response object containing either the entity alone or an error JSON
+	 * which might hold the entity as well. 
 	 * @param status
 	 * @param entity
 	 * @param errormessage
-	 * @return
+	 * @return Response configure for error or success
 	 */
 	public static Response createResponse( Response.Status status, Object entity, String errormessage )
 	{
@@ -151,7 +157,7 @@ public class JSONResponse
 	
 	/**
 	 * trap exceptions
-	 * @author joergp
+	 * @author Joerg Plewe
 	 */
 	@Provider
 	static class ExceptionMapper implements javax.ws.rs.ext.ExceptionMapper<Exception>

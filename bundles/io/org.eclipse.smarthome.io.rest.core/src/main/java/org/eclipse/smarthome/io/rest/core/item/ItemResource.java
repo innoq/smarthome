@@ -458,7 +458,7 @@ public class ItemResource implements RESTResource {
     /**
      * helper: Response to be sent to client if a Thing cannot be found
      * @param thingUID
-     * @return
+     * @return Response configured for 'item not found'
      */
     private static Response getItemNotFoundResponse( String itemname )
     {
@@ -468,11 +468,11 @@ public class ItemResource implements RESTResource {
     
 
     /**
-     * 
+     * Prepare a response representing the Item depending in the status.
      * @param status
-     * @param item
-     * @param errormessage
-     * @return
+     * @param item can be null
+     * @param errormessage optional message in case of error
+     * @return Response configured to represent the Item in depending on the status
      */
     private Response getItemResponse( Status status, Item item, String errormessage )
     {
@@ -482,9 +482,9 @@ public class ItemResource implements RESTResource {
     
     
     /**
-     * shortcut
+     * convenience shortcut
      * @param itemname
-     * @return
+     * @return Item addressed by itemname
      */
     private Item getItem(String itemname) {
         Item item = itemRegistry.get(itemname);
