@@ -149,6 +149,8 @@ public class SitemapResource implements RESTResource {
     @PUT
     @Path("/{sitemapname: [a-zA-Z_0-9]*}")
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "Store sitemap by its name.", response = SitemapDTO.class)
+    @ApiResponses(value = { @ApiResponse(code = 200, message = "OK") })
     public Response putSitemapData(@Context HttpHeaders headers, @PathParam("sitemapname") String sitemapname, SitemapDTO sitemapDTO) {
         logger.debug("Received HTTP PUT request at '{}' for sitemap '{}'.", uriInfo.getPath(), sitemapDTO);
 
