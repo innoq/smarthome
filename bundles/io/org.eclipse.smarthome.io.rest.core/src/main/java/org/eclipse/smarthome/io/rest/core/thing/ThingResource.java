@@ -409,7 +409,7 @@ public class ThingResource implements RESTResource {
         //        
         //thingRegistry.updateConfiguration(thingUIDObject, convertDoublesToBigDecimal(configurationParameters));
         try {
-            thingRegistry.updateConfiguration(new ThingUID(thingUID),
+            thingRegistry.updateConfiguration(thingUIDObject,
                     convertDoublesToBigDecimal(configurationParameters));
         } catch (ConfigValidationException ex) {
             logger.debug("Config description validation exception occured for thingUID " + thingUID,
@@ -419,7 +419,7 @@ public class ThingResource implements RESTResource {
         } catch (IllegalArgumentException ex) {
             logger.info("Received HTTP PUT request for update config at '{}' for the unknown thing '{}'.",
                     uriInfo.getPath(), thingUID);
-            return Response.status(Status.NOT_FOUND).build();
+            return getThingNotFoundResponse(thingUID);
         }
 
         return getThingResponse(Status.OK, thing, null);
