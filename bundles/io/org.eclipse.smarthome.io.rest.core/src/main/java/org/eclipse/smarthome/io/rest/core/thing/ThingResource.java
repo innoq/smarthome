@@ -20,6 +20,7 @@ import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -27,12 +28,16 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 
 import org.eclipse.smarthome.config.core.Configuration;
+import org.eclipse.smarthome.config.core.status.ConfigStatusInfo;
+import org.eclipse.smarthome.config.core.status.ConfigStatusService;
+import org.eclipse.smarthome.config.core.validation.ConfigValidationException;
 import org.eclipse.smarthome.core.items.GenericItem;
 import org.eclipse.smarthome.core.items.ItemFactory;
 import org.eclipse.smarthome.core.items.ItemNotFoundException;
@@ -43,15 +48,23 @@ import org.eclipse.smarthome.core.thing.ChannelUID;
 import org.eclipse.smarthome.core.thing.ManagedThingProvider;
 import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingRegistry;
+import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.ThingUID;
 import org.eclipse.smarthome.core.thing.dto.ThingDTO;
 import org.eclipse.smarthome.core.thing.link.ItemChannelLink;
 import org.eclipse.smarthome.core.thing.link.ItemChannelLinkRegistry;
 import org.eclipse.smarthome.core.thing.link.ManagedItemChannelLinkProvider;
+import org.eclipse.smarthome.io.rest.LocaleUtil;
 import org.eclipse.smarthome.io.rest.RESTResource;
 import org.eclipse.smarthome.io.rest.core.internal.JSONResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 
 /**
  * This class acts as a REST resource for things and is registered with the
@@ -59,10 +72,12 @@ import org.slf4j.LoggerFactory;
  *
  * @author Dennis Nobel - Initial contribution
  * @author Kai Kreuzer - refactored for using the OSGi JAX-RS connector
+ * @author Thomas Höfer - added validation of configuration
+ * @author Yordan Zhelev - Added Swagger annotations
  * @author Jörg Plewe - refactoring, error handling
  */
 @Path(ThingResource.PATH_THINGS)
-@Produces(MediaType.APPLICATION_JSON)
+@Api
 public class ThingResource implements RESTResource {
 
     private final Logger logger = LoggerFactory.getLogger(ThingResource.class);
@@ -77,6 +92,7 @@ public class ThingResource implements RESTResource {
     private ManagedItemProvider managedItemProvider;
     private ManagedThingProvider managedThingProvider;
     private ThingRegistry thingRegistry;
+    private ConfigStatusService configStatusService;
 
     @Context
     private UriInfo uriInfo;
@@ -88,7 +104,11 @@ public class ThingResource implements RESTResource {
      */
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response create(ThingDTO thingBean) {
+    @ApiOperation(value = "Adds a new thing to the registry.")
+    @ApiResponses(value = { @ApiResponse(code = 200, message = "OK"),
+            @ApiResponse(code = 400, message = "No binding can create the thing.") })
+    public Response create(@ApiParam(value = "thing data", required = true) ThingDTO thingBean) {
+
         ThingUID thingUIDObject = new ThingUID(thingBean.UID);
         ThingUID bridgeUID = null;
 
@@ -123,19 +143,21 @@ public class ThingResource implements RESTResource {
     
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "Get all available things.", response = EnrichedThingDTO.class, responseContainer = "Set")
+    @ApiResponses(value = { @ApiResponse(code = 200, message = "OK") })
     public Response getAll() {
-
         Collection<Thing> things = thingRegistry.getAll();
         Set<EnrichedThingDTO> thingBeans = convertToListBean(things);
-
         return Response.ok(thingBeans).build();
     }
 
     @GET
     @Path("/{thingUID}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getByUID(@PathParam("thingUID") String thingUID) 
-    {
+    @ApiOperation(value = "Gets thing by UID.")
+    @ApiResponses(value = { @ApiResponse(code = 200, message = "OK"),
+            @ApiResponse(code = 404, message = "Thing with provided thingUID does not exist.") })
+    public Response getByUID(@PathParam("thingUID") @ApiParam(value = "thingUID") String thingUID) {
         Thing thing = thingRegistry.get((new ThingUID(thingUID)));
 
         //
@@ -162,8 +184,12 @@ public class ThingResource implements RESTResource {
     @POST
     @Path("/{thingUID}/channels/{channelId}/link")
     @Consumes(MediaType.TEXT_PLAIN)
-    public Response link(@PathParam("thingUID") String thingUID, @PathParam("channelId") String channelId,
-            String itemName) {
+    @ApiOperation(value = "Links item to a channel. Creates item if such does not exist yet.")
+    @ApiResponses(value = { @ApiResponse(code = 200, message = "OK"),
+            @ApiResponse(code = 404, message = "Thing not found or channel not found") })
+    public Response link(@PathParam("thingUID") @ApiParam(value = "thingUID") String thingUID,
+            @PathParam("channelId") @ApiParam(value = "channelId") String channelId,
+            @ApiParam(value = "item name") String itemName) {
 
         Thing thing = thingRegistry.get(new ThingUID(thingUID));
         if (thing == null) {
@@ -206,8 +232,11 @@ public class ThingResource implements RESTResource {
      */
     @DELETE
     @Path("/{thingUID}")
-    public Response remove(@PathParam("thingUID") String thingUID,
-            @DefaultValue("false") @QueryParam("force") boolean force) {
+    @ApiOperation(value = "Removes a thing from the registry. Set \'force\' to __true__ if you want the thing te be removed immediately.")
+    @ApiResponses(value = { @ApiResponse(code = 200, message = "OK"),
+            @ApiResponse(code = 404, message = "Thing not found.") })
+    public Response remove(@PathParam("thingUID") @ApiParam(value = "thingUID") String thingUID,
+            @DefaultValue("false") @QueryParam("force") @ApiParam(value = "force") boolean force) {
 
     	ThingUID thingUIDObject = new ThingUID(thingUID); 
     	
@@ -259,9 +288,11 @@ public class ThingResource implements RESTResource {
      */
     @DELETE
     @Path("/{thingUID}/channels/{channelId}/link")
-    @Consumes(MediaType.TEXT_PLAIN)
-    public Response unlink(@PathParam("thingUID") String thingUID, @PathParam("channelId") String channelId,
-            String itemName) {
+    @ApiOperation(value = "Unlinks item from a channel.")
+    @ApiResponses(value = { @ApiResponse(code = 200, message = "OK") })
+    public Response unlink(@PathParam("thingUID") @ApiParam(value = "thingUID") String thingUID,
+            @PathParam("channelId") @ApiParam(value = "channelId") String channelId,
+            @ApiParam(value = "channelId") String itemName) {
 
         ChannelUID channelUID = new ChannelUID(new ThingUID(thingUID), channelId);
 
@@ -283,7 +314,11 @@ public class ThingResource implements RESTResource {
     @PUT
     @Path("/{thingUID}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response update(@PathParam("thingUID") String thingUID, ThingDTO thingBean) throws IOException {
+    @ApiOperation(value = "Updates a thing.")
+    @ApiResponses(value = { @ApiResponse(code = 200, message = "OK"),
+            @ApiResponse(code = 404, message = "Thing not found") })
+    public Response update(@PathParam("thingUID") @ApiParam(value = "thingUID") String thingUID,
+            @ApiParam(value = "thing", required = true) ThingDTO thingBean) throws IOException {
 
         ThingUID thingUIDObject = new ThingUID(thingUID);
         ThingUID bridgeUID = null;
@@ -341,8 +376,13 @@ public class ThingResource implements RESTResource {
     @PUT
     @Path("/{thingUID}/config")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response updateConfiguration(@PathParam("thingUID") String thingUID,
-            Map<String, Object> configurationParameters) throws IOException {
+    @ApiOperation(value = "Updates thing's configuration.")
+    @ApiResponses(value = { @ApiResponse(code = 200, message = "OK"),
+            @ApiResponse(code = 404, message = "Thing not found") })
+    public Response updateConfiguration(@HeaderParam(HttpHeaders.ACCEPT_LANGUAGE) String language,
+            @PathParam("thingUID") @ApiParam(value = "thing") String thingUID,
+            @ApiParam(value = "configuration parameters") Map<String, Object> configurationParameters)
+                    throws IOException {
 
     	ThingUID thingUIDObject = new ThingUID(thingUID);
     	
@@ -367,10 +407,36 @@ public class ThingResource implements RESTResource {
         //
         // only move on if Thing is known to be managed, so it can get updated
         //        
-        thingRegistry.updateConfiguration(thingUIDObject, convertDoublesToBigDecimal(configurationParameters));
+        //thingRegistry.updateConfiguration(thingUIDObject, convertDoublesToBigDecimal(configurationParameters));
+        try {
+            thingRegistry.updateConfiguration(new ThingUID(thingUID),
+                    convertDoublesToBigDecimal(configurationParameters));
+        } catch (ConfigValidationException ex) {
+            logger.debug("Config description validation exception occured for thingUID " + thingUID,
+                    ex.getValidationMessages());
+            return Response.status(Status.BAD_REQUEST).entity(ex.getValidationMessages(LocaleUtil.getLocale(language)))
+                    .build();
+        } catch (IllegalArgumentException ex) {
+            logger.info("Received HTTP PUT request for update config at '{}' for the unknown thing '{}'.",
+                    uriInfo.getPath(), thingUID);
+            return Response.status(Status.NOT_FOUND).build();
+        }
 
         return getThingResponse(Status.OK, thing, null);
     }
+
+
+    @GET
+    @Path("/{thingUID}/config/status")
+    public Response getConfigStatus(@HeaderParam(HttpHeaders.ACCEPT_LANGUAGE) String language,
+            @PathParam("thingUID") String thingUID) throws IOException {
+        ConfigStatusInfo info = configStatusService.getConfigStatus(thingUID, LocaleUtil.getLocale(language));
+        if (info != null) {
+            return Response.ok().entity(info.getConfigStatusMessages()).build();
+        }
+        return Response.status(Status.NOT_FOUND).build();
+    }
+
 
 
     
@@ -455,6 +521,14 @@ public class ThingResource implements RESTResource {
 
     protected void unsetThingRegistry(ThingRegistry thingRegistry) {
         this.thingRegistry = null;
+    }
+
+    protected void setConfigStatusService(ConfigStatusService configStatusService) {
+        this.configStatusService = configStatusService;
+    }
+
+    protected void unsetConfigStatusService(ConfigStatusService configStatusService) {
+        this.configStatusService = null;
     }
 
     private Set<EnrichedThingDTO> convertToListBean(Collection<Thing> things) {
