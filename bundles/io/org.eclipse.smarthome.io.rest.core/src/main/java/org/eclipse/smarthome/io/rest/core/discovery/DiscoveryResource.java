@@ -26,15 +26,26 @@ import org.eclipse.smarthome.io.rest.RESTResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
+
 /**
  * This class acts as a REST resource for discovery and is registered with the
  * Jersey servlet.
  *
  * @author Dennis Nobel - Initial contribution
  * @author Kai Kreuzer - refactored for using the OSGi JAX-RS connector
+ * @author Yordan Zhelev - Added Swagger annotations
  */
-@Path("discovery")
+@Path(DiscoveryResource.PATH_DISCOVERY)
+@Api(value = DiscoveryResource.PATH_DISCOVERY)
 public class DiscoveryResource implements RESTResource {
+
+    /** The URI path to this resource */
+    public static final String PATH_DISCOVERY = "discovery";
 
     private final Logger logger = LoggerFactory.getLogger(DiscoveryResource.class);
 
@@ -53,6 +64,8 @@ public class DiscoveryResource implements RESTResource {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(value = "Gets all bindings that support discovery.", response = String.class, responseContainer = "Set")
+    @ApiResponses(value = { @ApiResponse(code = 200, message = "OK") })
     public Response getDiscoveryServices() {
         Collection<String> supportedBindings = discoveryServiceRegistry.getSupportedBindings();
         return Response.ok(new LinkedHashSet<>(supportedBindings)).build();
@@ -60,7 +73,9 @@ public class DiscoveryResource implements RESTResource {
 
     @POST
     @Path("/bindings/{bindingId}/scan")
-    public Response scan(@PathParam("bindingId") final String bindingId) {
+    @ApiOperation(value = "Starts asynchronous discovery process for a binding.")
+    @ApiResponses(value = { @ApiResponse(code = 200, message = "OK") })
+    public Response scan(@PathParam("bindingId") @ApiParam(value = "bindingId") final String bindingId) {
         discoveryServiceRegistry.startScan(bindingId, new ScanListener() {
             @Override
             public void onErrorOccurred(Exception exception) {

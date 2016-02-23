@@ -13,10 +13,10 @@ There are the following categories of bundles:
 
  - `config`: everything that is concerned with general configuration of the system like config files, xml parsing, discovery, etc.	
  - `core`: the main bundles for the logical operation of the system - based on the abstract item and event concepts.
- - `io`: all kinds of optional functionality that have to do with i/o like console commands, audio support or http/rest communication
- - `model`: support for domain specific languages (DSLs) 
- - `designer`: Eclipse RCP support for DSLs and other configuration files
- - `ui`: user interface related bundles that provide services that can be used by different UIs, such as charting or icons
+ - `io`: all kinds of optional functionality that have to do with I/O like console commands, audio support or HTTP/REST communication.
+ - `model`: support for domain specific languages (DSLs). 
+ - `designer`: Eclipse RCP support for DSLs and other configuration files.
+ - `ui`: user interface related bundles that provide services that can be used by different UIs, such as charting or icons.
 
 ## Runtime Services
 
@@ -34,6 +34,14 @@ Being a framework, Eclipse SmartHome defines many extension types that allows bu
 The list of extension types will grow over time and you are invited to discuss useful extension types in [our forum](https://www.eclipse.org/forums/eclipse.smarthome).
 
 Note that many "existing" extension types like rule actions, persistence services, TTS modules, etc. are not covered in this documentation as it is planned to address and heavily refactor them in future - the current version is still from the initial contribution which came from openHAB 1 and thus is tight to textual configuration and not usable in a wider context.
+
+#### Extension Service
+
+Eclipse SmartHome comes with an API that allows implementing a service that manages the installed extensions within a solution. All that needs to be done is to register an OSGi service that implements `org.eclipse.smarthome.core.extension.ExtensionService`. Such a service has to provide a list of available extensions and then can be called in order to install and uninstall them.
+
+What kind of implementation is chosen is completely up to the solution. Suitable mechanisms might be Eclipse p2, Apache Felix FileInstall, Apache Karaf FeatureInstaller, etc. For testing purposes, Eclipse SmartHome comes with a sample implementation in the bundle `org.eclipse.smarthome.core.extension.sample`.
+
+Installation and uninstallation requests are executed by a thread pool named "extensionService". If an implementation does not support concurrent execution of such operations, the thread pool size should be set to 1.
 
 ### Bindings
 

@@ -15,7 +15,7 @@
       provider-name="Eclipse.org/SmartHome">
 
    <description>
-      This features defines all bundles that form the Eclipse SmartHome Core.
+      This feature defines all bundles that form the Eclipse SmartHome Core.
    </description>
 
    <copyright>
@@ -196,6 +196,13 @@
 
    <plugin
          id="org.eclipse.smarthome.config.dispatch"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="org.eclipse.smarthome.core.extension.sample"
          download-size="0"
          install-size="0"
          version="0.0.0"

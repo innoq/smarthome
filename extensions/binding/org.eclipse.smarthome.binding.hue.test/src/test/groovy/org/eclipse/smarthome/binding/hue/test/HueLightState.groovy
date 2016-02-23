@@ -12,6 +12,7 @@ package org.eclipse.smarthome.binding.hue.test
  * Builder for the current state of a hue light.
  *
  * @author Dominic Lerbs - Initial contribution
+ * @author Markus Mazurczak - Added possibility to set modelId to "PAR16 50 TW" to test osram workaround
  */
 class HueLightState {
 
@@ -20,6 +21,8 @@ class HueLightState {
     def saturation = 0;
     def colorTemperature = 153;
     boolean isOn = true;
+    def alert = 'none'
+    def effect = 'none'
 
 
     public HueLightState bri(int brightness){
@@ -47,6 +50,15 @@ class HueLightState {
         return this
     }
 
+    public HueLightState alert(String alert){
+        this.alert = alert
+        return this
+    }
+
+    public HueLightState effect(String effect){
+        this.effect = effect
+        return this
+    }
 
     public String toString(){
         def state = """
@@ -63,8 +75,8 @@ class HueLightState {
                   0
                 ],
                 "ct": ${colorTemperature},
-                "alert": "none",
-                "effect": "none",
+                "alert": "${alert}",
+                "effect": "${effect}",
                 "colormode": "hs",
                 "reachable": true
               },

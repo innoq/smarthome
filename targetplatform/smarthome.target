@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<?pde version="3.8"?><target name="SmartHome" sequenceNumber="88">
+<?pde version="3.8"?><target name="SmartHome" sequenceNumber="93">
 <locations>
 <location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
 <unit id="com.google.inject" version="3.0.0.v201312141243"/>
 <unit id="com.google.inject.source" version="3.0.0.v201312141243"/>
 <unit id="com.google.guava" version="10.0.1.v201203051515"/>
 <unit id="com.google.guava.source" version="10.0.1.v201203051515"/>
-<unit id="com.google.gson" version="2.2.4.v201311231704"/>
-<unit id="com.google.gson.source" version="2.2.4.v201311231704"/>
 <unit id="com.ibm.icu.base" version="52.1.0.v201404171520"/>
 <unit id="com.ibm.icu.base.source" version="52.1.0.v201404171520"/>
 <unit id="com.sun.jersey" version="1.17.0.v20130314-2020"/>
@@ -55,6 +53,7 @@
 <unit id="org.codehaus.jackson.mapper.source" version="1.6.0.v20101005-0925"/>
 <unit id="org.hamcrest.core" version="1.3.0.v201303031735"/>
 <unit id="org.hamcrest.core.source" version="1.3.0.v201303031735"/>
+<unit id="org.json" version="1.0.0.v201011060100"/>
 <unit id="org.mockito" version="1.9.5.v201311280930"/>
 <unit id="org.mockito.source" version="1.9.5.v201311280930"/>
 <unit id="org.objectweb.asm" version="5.0.1.v201404251740"/>
@@ -109,7 +108,7 @@
 </location>
 <location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
 <unit id="org.jupnp.feature.feature.group" version="0.0.0"/>
-<repository location="http://www.openhab.org/jupnp/update-site"/>
+<repository location="http://www.jupnp.org/update-site/2.1.0"/>
 </location>
 <location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
 <unit id="com.eclipsesource.jaxrs.provider.security.feature.source.feature.group" version="0.0.0"/>
@@ -122,7 +121,9 @@
 <unit id="com.eclipsesource.jaxrs.provider.sse.feature.source.feature.group" version="0.0.0"/>
 <unit id="com.eclipsesource.jaxrs.jersey.runtime.feature.feature.group" version="0.0.0"/>
 <unit id="com.eclipsesource.jaxrs.provider.sse.feature.feature.group" version="0.0.0"/>
-<repository location="http://hstaudacher.github.io/osgi-jax-rs-connector/5.0.0"/>
+<unit id="com.eclipsesource.jaxrs.provider.swagger.feature.feature.group" version="0.0.0"/>
+<unit id="com.eclipsesource.jaxrs.provider.swagger.feature.source.feature.group" version="0.0.0"/>
+<repository location="http://hstaudacher.github.io/osgi-jax-rs-connector/5.3.0"/>
 </location>
 <location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
 <unit id="org.eclipse.paho.client.mqttv3" version="1.0.2"/>
@@ -130,7 +131,7 @@
 </location>
 <location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
 <unit id="javax.jmdns.feature.feature.group" version="3.4.2"/>
-<repository location="http://www.openhab.org/jmdns/update-site/3.4.2/"/>
+<repository location="http://www.jmdns.org/update-site/3.4.2/"/>
 </location>
 </locations>
 </target>

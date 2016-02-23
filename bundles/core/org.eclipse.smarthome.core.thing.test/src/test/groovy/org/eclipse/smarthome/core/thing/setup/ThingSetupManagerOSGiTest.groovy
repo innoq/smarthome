@@ -250,7 +250,7 @@ class ThingSetupManagerOSGiTest extends OSGiTest {
         assertThat itemRegistry.getItems().size(), is(3)
         thingSetupManager.disableChannel(new ChannelUID(thingUID, "1"))
         assertThat itemRegistry.getItems().size(), is(2)
-        thingSetupManager.enableChannel(new ChannelUID(thingUID, "1"))
+        thingSetupManager.enableChannel(new ChannelUID(thingUID, "1"), null)
         assertThat itemRegistry.getItems().size(), is(3)
     }
 
@@ -297,9 +297,12 @@ class ThingSetupManagerOSGiTest extends OSGiTest {
 
         def thingUID = new ThingUID("binding", "thing-type", "thing")
         thingSetupManager.addThing(thingUID, new Configuration(), null, "MyThing", [] as List, true)
+        assertThat thingSetupManager.getThing(thingUID).getLabel(), is(equalTo("MyThing"))
+
         thingSetupManager.setLabel(thingUID, "Another Label")
 
         assertThat thingSetupManager.getThing(thingUID).linkedItem.label, is(equalTo("Another Label"))
+        assertThat thingSetupManager.getThing(thingUID).getLabel(), is(equalTo("Another Label"))
     }
 
 

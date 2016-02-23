@@ -7,17 +7,24 @@
  */
 package org.eclipse.smarthome.config.discovery.internal;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.eclipse.smarthome.config.core.ConfigDescription;
+import org.eclipse.smarthome.config.core.ConfigDescriptionParameter;
+import org.eclipse.smarthome.config.core.ConfigDescriptionRegistry;
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.config.discovery.DiscoveryListener;
 import org.eclipse.smarthome.config.discovery.DiscoveryResult;
@@ -38,6 +45,10 @@ import org.eclipse.smarthome.core.thing.ThingRegistry;
 import org.eclipse.smarthome.core.thing.ThingRegistryChangeListener;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.ThingUID;
+import org.eclipse.smarthome.core.thing.binding.ThingFactory;
+import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory;
+import org.eclipse.smarthome.core.thing.type.ThingType;
+import org.eclipse.smarthome.core.thing.type.ThingTypeRegistry;
 import org.osgi.service.component.ComponentContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +67,7 @@ import org.slf4j.LoggerFactory;
  * @author Michael Grammling - Added dynamic configuration updates
  * @author Dennis Nobel - Added persistence support
  * @author Andre Fuechsel - Added removeOlderResults
+ * @author Christoph Knauf - Added removeThingsForBridge and getPropsAndConfigParams
  *
  */
 public final class PersistentInbox implements Inbox, DiscoveryListener, ThingRegistryChangeListener {
@@ -101,14 +113,53 @@ public final class PersistentInbox implements Inbox, DiscoveryListener, ThingReg
     private Set<InboxListener> listeners = new CopyOnWriteArraySet<>();
 
     private DiscoveryServiceRegistry discoveryServiceRegistry;
+
     private ThingRegistry thingRegistry;
+
     private ManagedThingProvider managedThingProvider;
+
+    private ThingTypeRegistry thingTypeRegistry;
+
+    private ConfigDescriptionRegistry configDescRegistry;
 
     private Storage<DiscoveryResult> discoveryResultStorage;
 
     private ScheduledFuture<?> timeToLiveChecker;
 
     private EventPublisher eventPublisher;
+
+    private List<ThingHandlerFactory> thingHandlerFactories = new CopyOnWriteArrayList<>();
+
+    @Override
+    public Thing approve(ThingUID thingUID, String label) {
+        if (thingUID == null) {
+            throw new IllegalArgumentException("Thing UID must not be null");
+        }
+        List<DiscoveryResult> results = get(new InboxFilterCriteria(thingUID, null));
+        if (results.isEmpty()) {
+            throw new IllegalArgumentException("No Thing with UID " + thingUID.getAsString() + " in inbox");
+        }
+        DiscoveryResult result = results.get(0);
+        final Map<String, String> properties = new HashMap<>();
+        final Map<String, Object> configParams = new HashMap<>();
+        getPropsAndConfigParams(result, properties, configParams);
+        final Configuration config = new Configuration(configParams);
+        ThingTypeUID thingTypeUID = result.getThingTypeUID();
+        Thing newThing = ThingFactory.createThing(thingUID, config, properties, result.getBridgeUID(), thingTypeUID,
+                this.thingHandlerFactories);
+        if (newThing == null) {
+            logger.warn("Cannot create thing. No binding found that supports creating a thing" + " of type {}.",
+                    thingTypeUID);
+            return null;
+        }
+        if (label != null && !label.isEmpty()) {
+            newThing.setLabel(label);
+        } else {
+            newThing.setLabel(result.getLabel());
+        }
+        addThingSafely(newThing);
+        return newThing;
+    }
 
     @Override
     public synchronized boolean add(DiscoveryResult result) throws IllegalStateException {
@@ -206,12 +257,14 @@ public final class PersistentInbox implements Inbox, DiscoveryListener, ThingReg
         if (thingUID != null) {
             DiscoveryResult discoveryResult = get(thingUID);
             if (discoveryResult != null) {
+                if (!isInRegistry(thingUID)) {
+                    removeResultsForBridge(thingUID);
+                }
                 this.discoveryResultStorage.remove(thingUID.toString());
                 notifyListeners(discoveryResult, EventType.removed);
                 return true;
             }
         }
-
         return false;
     }
 
@@ -237,8 +290,9 @@ public final class PersistentInbox implements Inbox, DiscoveryListener, ThingReg
             Collection<ThingTypeUID> thingTypeUIDs) {
         HashSet<ThingUID> removedThings = new HashSet<>();
         for (DiscoveryResult discoveryResult : getAll()) {
-            ThingUID thingUID = discoveryResult.getThingUID();
-            if (thingTypeUIDs.contains(thingUID.getThingTypeUID()) && discoveryResult.getTimestamp() < timestamp) {
+            if (thingTypeUIDs.contains(discoveryResult.getThingTypeUID())
+                    && discoveryResult.getTimestamp() < timestamp) {
+                ThingUID thingUID = discoveryResult.getThingUID();
                 removedThings.add(thingUID);
                 remove(thingUID);
                 logger.debug("Removed {} from inbox because it was older than {}", thingUID, new Date(timestamp));
@@ -328,7 +382,6 @@ public final class PersistentInbox implements Inbox, DiscoveryListener, ThingReg
                 }
             }
         }
-
         return true;
     }
 
@@ -376,6 +429,82 @@ public final class PersistentInbox implements Inbox, DiscoveryListener, ThingReg
                 logger.error("Could not post event of type '" + eventType.name() + "'.", ex);
             }
         }
+    }
+
+    private boolean isInRegistry(ThingUID thingUID) {
+        if (thingRegistry.get(thingUID) == null) {
+            return false;
+        }
+        return true;
+    }
+
+    private void removeResultsForBridge(ThingUID bridgeUID) {
+        for (ThingUID thingUID : getResultsForBridge(bridgeUID)) {
+            DiscoveryResult discoveryResult = get(thingUID);
+            if (discoveryResult != null) {
+                this.discoveryResultStorage.remove(thingUID.toString());
+                notifyListeners(discoveryResult, EventType.removed);
+            }
+        }
+    }
+
+    private List<ThingUID> getResultsForBridge(ThingUID bridgeUID) {
+        List<ThingUID> thingsForBridge = new ArrayList<>();
+        for (DiscoveryResult result : discoveryResultStorage.getValues()) {
+            if (bridgeUID.equals(result.getBridgeUID())) {
+                thingsForBridge.add(result.getThingUID());
+            }
+        }
+        return thingsForBridge;
+    }
+
+    /**
+     * Get the properties and configuration parameters for the thing with the given {@link DiscoveryResult}.
+     *
+     * @param discoveryResult the DiscoveryResult
+     * @param props the location the properties should be stored to.
+     * @param configParams the location the configuration parameters should be stored to.
+     */
+    private void getPropsAndConfigParams(final DiscoveryResult discoveryResult, final Map<String, String> props,
+            final Map<String, Object> configParams) {
+        final Set<String> paramNames = getConfigDescParamNames(discoveryResult);
+        final Map<String, Object> resultProps = discoveryResult.getProperties();
+        for (String resultKey : resultProps.keySet()) {
+            if (paramNames.contains(resultKey)) {
+                configParams.put(resultKey, resultProps.get(resultKey));
+            } else {
+                props.put(resultKey, String.valueOf(resultProps.get(resultKey)));
+            }
+        }
+    }
+
+    private Set<String> getConfigDescParamNames(DiscoveryResult discoveryResult) {
+        List<ConfigDescriptionParameter> confDescParams = getConfigDescParams(discoveryResult);
+        Set<String> paramNames = new HashSet<>();
+        for (ConfigDescriptionParameter param : confDescParams) {
+            paramNames.add(param.getName());
+        }
+        return paramNames;
+    }
+
+    private List<ConfigDescriptionParameter> getConfigDescParams(DiscoveryResult discoveryResult) {
+        ThingType type = thingTypeRegistry.getThingType(discoveryResult.getThingTypeUID());
+        if (type != null && type.hasConfigDescriptionURI()) {
+            URI descURI = type.getConfigDescriptionURI();
+            ConfigDescription desc = configDescRegistry.getConfigDescription(descURI);
+            if (desc != null) {
+                return desc.getParameters();
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    private void addThingSafely(Thing thing) {
+        ThingUID thingUID = thing.getUID();
+        if (thingRegistry.get(thingUID) != null) {
+            thingRegistry.remove(thingUID);
+        }
+        thingRegistry.add(thing);
     }
 
     protected void activate(ComponentContext componentContext) {
@@ -437,6 +566,30 @@ public final class PersistentInbox implements Inbox, DiscoveryListener, ThingReg
 
     protected void unsetEventPublisher(EventPublisher eventPublisher) {
         this.eventPublisher = null;
+    }
+
+    protected void setThingTypeRegistry(ThingTypeRegistry thingTypeRegistry) {
+        this.thingTypeRegistry = thingTypeRegistry;
+    }
+
+    protected void unsetThingTypeRegistry(ThingTypeRegistry thingTypeRegistry) {
+        thingTypeRegistry = null;
+    }
+
+    protected void setConfigDescriptionRegistry(ConfigDescriptionRegistry configDescriptionRegistry) {
+        this.configDescRegistry = configDescriptionRegistry;
+    }
+
+    protected void unsetConfigDescriptionRegistry(ConfigDescriptionRegistry configDescriptionRegistry) {
+        configDescRegistry = null;
+    }
+
+    protected void addThingHandlerFactory(ThingHandlerFactory thingHandlerFactory) {
+        this.thingHandlerFactories.add(thingHandlerFactory);
+    }
+
+    protected void removeThingHandlerFactory(ThingHandlerFactory thingHandlerFactory) {
+        this.thingHandlerFactories.remove(thingHandlerFactory);
     }
 
 }

@@ -21,15 +21,19 @@ public class EnrichedThingDTO extends ThingDTO {
 
     public ThingStatusInfo statusInfo;
     public EnrichedGroupItemDTO item;
+    public final String link;
 
-    public EnrichedThingDTO(ThingDTO thingDTO, ThingStatusInfo statusInfo, EnrichedGroupItemDTO item) {
+    public EnrichedThingDTO(ThingDTO thingDTO, ThingStatusInfo statusInfo, EnrichedGroupItemDTO item, String link) {
         this.UID = thingDTO.UID;
+        this.label = thingDTO.label != null ? thingDTO.label : item.label;
+        this.thingTypeUID = thingDTO.thingTypeUID;
         this.bridgeUID = thingDTO.bridgeUID;
         this.channels = thingDTO.channels;
         this.configuration = thingDTO.configuration;
         this.properties = thingDTO.properties;
         this.statusInfo = statusInfo;
         this.item = item;
+        this.link = link;
     }
 
 }

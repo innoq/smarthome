@@ -7,10 +7,8 @@
  */
 package org.eclipse.smarthome.io.rest.core.thing;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -20,19 +18,16 @@ import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import org.eclipse.smarthome.config.core.ConfigDescription;
-import org.eclipse.smarthome.config.core.ConfigDescriptionParameter;
-import org.eclipse.smarthome.config.core.ConfigDescriptionParameterGroup;
 import org.eclipse.smarthome.config.core.ConfigDescriptionRegistry;
-import org.eclipse.smarthome.config.core.FilterCriteria;
-import org.eclipse.smarthome.config.core.ParameterOption;
+import org.eclipse.smarthome.config.core.dto.ConfigDescriptionDTO;
+import org.eclipse.smarthome.config.core.dto.ConfigDescriptionDTOMapper;
 import org.eclipse.smarthome.config.core.dto.ConfigDescriptionParameterDTO;
 import org.eclipse.smarthome.config.core.dto.ConfigDescriptionParameterGroupDTO;
-import org.eclipse.smarthome.config.core.dto.FilterCriteriaDTO;
-import org.eclipse.smarthome.config.core.dto.ParameterOptionDTO;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.dto.ChannelDefinitionDTO;
 import org.eclipse.smarthome.core.thing.dto.ChannelGroupDefinitionDTO;
@@ -47,18 +42,33 @@ import org.eclipse.smarthome.core.thing.type.ThingTypeRegistry;
 import org.eclipse.smarthome.core.thing.type.TypeResolver;
 import org.eclipse.smarthome.io.rest.LocaleUtil;
 import org.eclipse.smarthome.io.rest.RESTResource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 
 /**
- * This is a java bean that is used with JAXB to serialize things to XML or
- * JSON.
+ * ThingTypeResource provides access to ThingType via REST.
  *
  * @author Dennis Nobel - Initial contribution
  * @author Kai Kreuzer - refactored for using the OSGi JAX-RS connector
  * @author Thomas Höfer - Added thing and thing type properties
- * @author Chris Jackson - Added parameter groups, advanced, multipleLimit, limitToOptions
+ * @author Chris Jackson - Added parameter groups, advanced, multipleLimit,
+ *         limitToOptions
+ * @author Yordan Zhelev - Added Swagger annotations
  */
-@Path("thing-types")
+@Path(ThingTypeResource.PATH_THINGS_TYPES)
+@Api(value = ThingTypeResource.PATH_THINGS_TYPES)
 public class ThingTypeResource implements RESTResource {
+
+    /** The URI path to this resource */
+    public static final String PATH_THINGS_TYPES = "thing-types";
+
+    private final Logger logger = LoggerFactory.getLogger(ThingTypeResource.class);
 
     private ThingTypeRegistry thingTypeRegistry;
     private ConfigDescriptionRegistry configDescriptionRegistry;
@@ -81,94 +91,77 @@ public class ThingTypeResource implements RESTResource {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getAll(@HeaderParam("Accept-Language") String language) {
+    @ApiOperation(value = "Gets all available things types.", response = ThingTypeDTO.class, responseContainer = "Set")
+    @ApiResponses(value = @ApiResponse(code = 200, message = "OK") )
+    public Response getAll(
+            @HeaderParam(HttpHeaders.ACCEPT_LANGUAGE) @ApiParam(value = HttpHeaders.ACCEPT_LANGUAGE) String language) {
         Locale locale = LocaleUtil.getLocale(language);
-        Set<ThingTypeDTO> thingTypeBeans = convertToThingTypeBeans(thingTypeRegistry.getThingTypes(locale), locale);
-        return Response.ok(thingTypeBeans).build();
+        Set<ThingTypeDTO> thingTypeDTOs = convertToThingTypeDTOs(thingTypeRegistry.getThingTypes(locale), locale);
+        return Response.ok(thingTypeDTOs).build();
     }
 
     @GET
     @Path("/{thingTypeUID}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getByUID(@PathParam("thingTypeUID") String thingTypeUID,
-            @HeaderParam("Accept-Language") String language) {
+    @ApiOperation(value = "Gets thing type by UID.", response = ThingTypeDTO.class)
+    @ApiResponses(value = { @ApiResponse(code = 200, message = "Thing type with provided thingTypeUID does not exist."),
+            @ApiResponse(code = 404, message = "No content") })
+    public Response getByUID(@PathParam("thingTypeUID") @ApiParam(value = "thingTypeUID") String thingTypeUID,
+            @HeaderParam(HttpHeaders.ACCEPT_LANGUAGE) @ApiParam(value = HttpHeaders.ACCEPT_LANGUAGE) String language) {
         Locale locale = LocaleUtil.getLocale(language);
         ThingType thingType = thingTypeRegistry.getThingType(new ThingTypeUID(thingTypeUID), locale);
         if (thingType != null) {
-            return Response.ok(convertToThingTypeBean(thingType, locale)).build();
+            return Response.ok(convertToThingTypeDTO(thingType, locale)).build();
         } else {
             return Response.noContent().build();
         }
     }
 
-    public List<ConfigDescriptionParameterDTO> getConfigDescriptionParameterBeans(URI configDescriptionURI,
-            Locale locale) {
-
-        ConfigDescription configDescription = configDescriptionRegistry.getConfigDescription(configDescriptionURI,
-                locale);
-        if (configDescription != null) {
-            List<ConfigDescriptionParameterDTO> configDescriptionParameterBeans = new ArrayList<>(
-                    configDescription.getParameters().size());
-            for (ConfigDescriptionParameter configDescriptionParameter : configDescription.getParameters()) {
-                ConfigDescriptionParameterDTO configDescriptionParameterBean = new ConfigDescriptionParameterDTO(
-                        configDescriptionParameter.getName(), configDescriptionParameter.getType(),
-                        configDescriptionParameter.getMinimum(), configDescriptionParameter.getMaximum(),
-                        configDescriptionParameter.getStepSize(), configDescriptionParameter.getPattern(),
-                        configDescriptionParameter.isRequired(), configDescriptionParameter.isReadOnly(),
-                        configDescriptionParameter.isMultiple(), configDescriptionParameter.getContext(),
-                        String.valueOf(configDescriptionParameter.getDefault()), configDescriptionParameter.getLabel(),
-                        configDescriptionParameter.getDescription(),
-                        createBeansForOptions(configDescriptionParameter.getOptions()),
-                        createBeansForCriteria(configDescriptionParameter.getFilterCriteria()),
-                        configDescriptionParameter.getGroupName(), configDescriptionParameter.isAdvanced(),
-                        configDescriptionParameter.getLimitToOptions(), configDescriptionParameter.getMultipleLimit());
-                configDescriptionParameterBeans.add(configDescriptionParameterBean);
-            }
-            return configDescriptionParameterBeans;
-        }
-
-        return null;
-    }
-
-    private List<FilterCriteriaDTO> createBeansForCriteria(List<FilterCriteria> filterCriteria) {
-        if (filterCriteria == null)
-            return null;
-        List<FilterCriteriaDTO> result = new LinkedList<FilterCriteriaDTO>();
-        for (FilterCriteria criteria : filterCriteria) {
-            result.add(new FilterCriteriaDTO(criteria.getName(), criteria.getValue()));
-        }
-        return result;
-    }
-
-    private List<ParameterOptionDTO> createBeansForOptions(List<ParameterOption> options) {
-        if (options == null)
-            return null;
-        List<ParameterOptionDTO> result = new LinkedList<ParameterOptionDTO>();
-        for (ParameterOption option : options) {
-            result.add(new ParameterOptionDTO(option.getValue(), option.getLabel()));
-        }
-        return result;
-    }
-
-    public Set<ThingTypeDTO> getThingTypeBeans(String bindingId, Locale locale) {
+    public Set<ThingTypeDTO> getThingTypeDTOs(String bindingId, Locale locale) {
 
         List<ThingType> thingTypes = thingTypeRegistry.getThingTypes(bindingId);
-        Set<ThingTypeDTO> thingTypeBeans = convertToThingTypeBeans(thingTypes, locale);
-        return thingTypeBeans;
+        Set<ThingTypeDTO> thingTypeDTOs = convertToThingTypeDTOs(thingTypes, locale);
+        return thingTypeDTOs;
     }
 
-    private ThingTypeDTO convertToThingTypeBean(ThingType thingType, Locale locale) {
+    private ThingTypeDTO convertToThingTypeDTO(ThingType thingType, Locale locale) {
+
+        final ConfigDescription configDescription;
+        if (thingType.hasConfigDescriptionURI()) {
+            configDescription = this.configDescriptionRegistry.getConfigDescription(thingType.getConfigDescriptionURI(),
+                    locale);
+        } else {
+            configDescription = null;
+        }
+
+        List<ConfigDescriptionParameterDTO> parameters;
+        List<ConfigDescriptionParameterGroupDTO> parameterGroups;
+
+        if (configDescription != null) {
+            ConfigDescriptionDTO configDescriptionDTO = ConfigDescriptionDTOMapper.map(configDescription);
+            parameters = configDescriptionDTO.parameters;
+            parameterGroups = configDescriptionDTO.parameterGroups;
+        } else {
+            parameters = new ArrayList<>(0);
+            parameterGroups = new ArrayList<>(0);
+        }
+
+        final List<ChannelDefinitionDTO> channelDefinitions = convertToChannelDefinitionDTOs(
+                thingType.getChannelDefinitions(), locale);
+        if (channelDefinitions == null) {
+            return null;
+        }
+
         return new ThingTypeDTO(thingType.getUID().toString(), thingType.getLabel(), thingType.getDescription(),
-                getConfigDescriptionParameterBeans(thingType.getConfigDescriptionURI(), locale),
-                convertToChannelDefinitionBeans(thingType.getChannelDefinitions(), locale),
-                convertToChannelGroupDefinitionBeans(thingType.getChannelGroupDefinitions(), locale),
+                parameters, channelDefinitions,
+                convertToChannelGroupDefinitionDTOs(thingType.getChannelGroupDefinitions(), locale),
                 thingType.getSupportedBridgeTypeUIDs(), thingType.getProperties(), thingType instanceof BridgeType,
-                convertToParameterGroupBeans(thingType.getConfigDescriptionURI(), locale));
+                parameterGroups);
     }
 
-    private List<ChannelGroupDefinitionDTO> convertToChannelGroupDefinitionBeans(
+    private List<ChannelGroupDefinitionDTO> convertToChannelGroupDefinitionDTOs(
             List<ChannelGroupDefinition> channelGroupDefinitions, Locale locale) {
-        List<ChannelGroupDefinitionDTO> channelGroupDefinitionBeans = new ArrayList<>();
+        List<ChannelGroupDefinitionDTO> channelGroupDefinitionDTOs = new ArrayList<>();
         for (ChannelGroupDefinition channelGroupDefinition : channelGroupDefinitions) {
             String id = channelGroupDefinition.getId();
             ChannelGroupType channelGroupType = TypeResolver.resolve(channelGroupDefinition.getTypeUID(), locale);
@@ -176,69 +169,61 @@ public class ThingTypeResource implements RESTResource {
             String label = channelGroupType.getLabel();
             String description = channelGroupType.getDescription();
             List<ChannelDefinition> channelDefinitions = channelGroupType.getChannelDefinitions();
-            List<ChannelDefinitionDTO> channelDefinitionBeans = convertToChannelDefinitionBeans(channelDefinitions,
+            List<ChannelDefinitionDTO> channelDefinitionDTOs = convertToChannelDefinitionDTOs(channelDefinitions,
                     locale);
 
-            channelGroupDefinitionBeans
-                    .add(new ChannelGroupDefinitionDTO(id, label, description, channelDefinitionBeans));
+            channelGroupDefinitionDTOs
+                    .add(new ChannelGroupDefinitionDTO(id, label, description, channelDefinitionDTOs));
         }
-        return channelGroupDefinitionBeans;
+        return channelGroupDefinitionDTOs;
     }
 
-    private List<ChannelDefinitionDTO> convertToChannelDefinitionBeans(List<ChannelDefinition> channelDefinitions,
+    private List<ChannelDefinitionDTO> convertToChannelDefinitionDTOs(List<ChannelDefinition> channelDefinitions,
             Locale locale) {
-        List<ChannelDefinitionDTO> channelDefinitionBeans = new ArrayList<>();
+        List<ChannelDefinitionDTO> channelDefinitionDTOs = new ArrayList<>();
         for (ChannelDefinition channelDefinition : channelDefinitions) {
             ChannelType channelType = TypeResolver.resolve(channelDefinition.getChannelTypeUID(), locale);
+            if (channelType == null) {
+                logger.warn("Cannot find channel type: {}", channelDefinition.getChannelTypeUID());
+                return null;
+            }
 
-            // Default to the channelDefinition label to override the channelType
+            // Default to the channelDefinition label to override the
+            // channelType
             String label = channelDefinition.getLabel();
             if (label == null) {
                 label = channelType.getLabel();
             }
 
-            // Default to the channelDefinition description to override the channelType
+            // Default to the channelDefinition description to override the
+            // channelType
             String description = channelDefinition.getDescription();
             if (description == null) {
                 description = channelType.getDescription();
             }
 
-            ChannelDefinitionDTO channelDefinitionBean = new ChannelDefinitionDTO(channelDefinition.getId(),
+            ChannelDefinitionDTO channelDefinitionDTO = new ChannelDefinitionDTO(channelDefinition.getId(),
                     channelDefinition.getChannelTypeUID().toString(), label, description, channelType.getTags(),
                     channelType.getCategory(), channelType.getState(), channelType.isAdvanced(),
                     channelDefinition.getProperties());
-            channelDefinitionBeans.add(channelDefinitionBean);
+            channelDefinitionDTOs.add(channelDefinitionDTO);
         }
-        return channelDefinitionBeans;
+        return channelDefinitionDTOs;
     }
 
-    private Set<ThingTypeDTO> convertToThingTypeBeans(List<ThingType> thingTypes, Locale locale) {
-        Set<ThingTypeDTO> thingTypeBeans = new HashSet<>();
+    private Set<ThingTypeDTO> convertToThingTypeDTOs(List<ThingType> thingTypes, Locale locale) {
+        Set<ThingTypeDTO> thingTypeDTOs = new HashSet<>();
 
         for (ThingType thingType : thingTypes) {
-            thingTypeBeans.add(convertToThingTypeBean(thingType, locale));
-        }
-
-        return thingTypeBeans;
-    }
-
-    private List<ConfigDescriptionParameterGroupDTO> convertToParameterGroupBeans(URI configDescriptionURI,
-            Locale locale) {
-
-        ConfigDescription configDescription = configDescriptionRegistry.getConfigDescription(configDescriptionURI,
-                locale);
-        List<ConfigDescriptionParameterGroupDTO> parameterGroupBeans = new ArrayList<>();
-        if (configDescription != null) {
-
-            List<ConfigDescriptionParameterGroup> parameterGroups = configDescription.getParameterGroups();
-            for (ConfigDescriptionParameterGroup parameterGroup : parameterGroups) {
-                parameterGroupBeans.add(new ConfigDescriptionParameterGroupDTO(parameterGroup.getName(),
-                        parameterGroup.getContext(), parameterGroup.isAdvanced(), parameterGroup.getLabel(),
-                        parameterGroup.getDescription()));
+            final ThingTypeDTO thingTypeDTO = convertToThingTypeDTO(thingType, locale);
+            if (thingTypeDTO != null) {
+                thingTypeDTOs.add(thingTypeDTO);
+            } else {
+                logger.warn("Cannot create DTO for thingType '{}'. Skip it.", thingType);
             }
         }
 
-        return parameterGroupBeans;
+        return thingTypeDTOs;
     }
 
 }

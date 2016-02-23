@@ -130,8 +130,8 @@ public class GroupItem extends GenericItem implements StateChangeListener {
                     acceptedDataTypes.retainAll(item.getAcceptedDataTypes());
                 }
             }
-            return acceptedDataTypes == null ? Collections.unmodifiableList(Collections.EMPTY_LIST) : Collections
-                    .unmodifiableList(acceptedDataTypes);
+            return acceptedDataTypes == null ? Collections.unmodifiableList(Collections.EMPTY_LIST)
+                    : Collections.unmodifiableList(acceptedDataTypes);
         }
     }
 
@@ -157,8 +157,8 @@ public class GroupItem extends GenericItem implements StateChangeListener {
                     acceptedCommandTypes.retainAll(item.getAcceptedCommandTypes());
                 }
             }
-            return acceptedCommandTypes == null ? Collections.unmodifiableList(Collections.EMPTY_LIST) : Collections
-                    .unmodifiableList(acceptedCommandTypes);
+            return acceptedCommandTypes == null ? Collections.unmodifiableList(Collections.EMPTY_LIST)
+                    : Collections.unmodifiableList(acceptedCommandTypes);
         }
     }
 
@@ -234,6 +234,12 @@ public class GroupItem extends GenericItem implements StateChangeListener {
             sb.append(Joiner.on(", ").join(getTags()));
             sb.append("]");
         }
+        if (!getGroupNames().isEmpty()) {
+            sb.append(", ");
+            sb.append("Groups=[");
+            sb.append(Joiner.on(", ").join(getGroupNames()));
+            sb.append("]");
+        }
         sb.append(")");
         return sb.toString();
     }
@@ -242,8 +248,7 @@ public class GroupItem extends GenericItem implements StateChangeListener {
      * @{inheritDoc
      */
     @Override
-    public void stateChanged(Item item, State oldState, State newState) {
-        setState(function.calculate(members));
+    public void stateChanged(Item item, State oldState, State newState) { 
     }
 
     /**
@@ -251,7 +256,24 @@ public class GroupItem extends GenericItem implements StateChangeListener {
      */
     @Override
     public void stateUpdated(Item item, State state) {
+        State oldState = this.state;
         setState(function.calculate(members));
+        if (!oldState.equals(this.state)) {
+            sendGroupStateChangedEvent(item.getName(), this.state, oldState);
+        }
+    }
+
+    public void setState(State state) {
+        State oldState = this.state;
+        this.state = state;
+        notifyListeners(oldState, state);
+    }
+
+    private void sendGroupStateChangedEvent(String memberName, State newState, State oldState) {
+        if (eventPublisher != null) {
+            eventPublisher.post(
+                    ItemEventFactory.createGroupStateChangedEvent(this.getName(), memberName, newState, oldState));
+        }
     }
 
 }

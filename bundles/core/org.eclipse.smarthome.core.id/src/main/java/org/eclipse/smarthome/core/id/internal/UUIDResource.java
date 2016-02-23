@@ -16,19 +16,27 @@ import javax.ws.rs.core.Response;
 import org.eclipse.smarthome.core.id.InstanceUUID;
 import org.eclipse.smarthome.io.rest.RESTResource;
 
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
+
 /**
  * This class acts as a REST resource for accessing the UUID of the instance
  *
  * @author Kai Kreuzer - Initial contribution and API
  */
 @Path(UUIDResource.PATH_UUID)
+@Api(value = UUIDResource.PATH_UUID)
 public class UUIDResource implements RESTResource {
 
     public static final String PATH_UUID = "uuid";
 
     @GET
     @Produces(MediaType.TEXT_PLAIN)
-    public Response getSitemaps() {
+    @ApiOperation(value = "A unified unique id.", response = String.class)
+    @ApiResponses(value = { @ApiResponse(code = 200, message = "OK") })
+    public Response getInstanceUUID() {
         return Response.ok(InstanceUUID.get()).build();
     }
 

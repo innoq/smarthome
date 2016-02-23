@@ -16,7 +16,9 @@ import java.util.Set;
 
 import org.eclipse.smarthome.config.core.Configuration;
 import org.eclipse.smarthome.core.items.Item;
+import org.eclipse.smarthome.core.thing.binding.BaseThingHandler;
 import org.eclipse.smarthome.core.thing.link.ItemChannelLinkRegistry;
+import org.eclipse.smarthome.core.thing.type.ChannelTypeUID;
 
 import com.google.common.collect.ImmutableSet;
 
@@ -36,6 +38,8 @@ public class Channel {
     private String acceptedItemType;
 
     private ChannelUID uid;
+
+    private ChannelTypeUID channelTypeUID;
 
     private String label;
 
@@ -63,22 +67,24 @@ public class Channel {
     }
 
     public Channel(ChannelUID uid, String acceptedItemType, Configuration configuration) {
-        this(uid, acceptedItemType, configuration, new HashSet<String>(0), null, null, null);
+        this(uid, null, acceptedItemType, configuration, new HashSet<String>(0), null, null, null);
     }
 
     public Channel(ChannelUID uid, String acceptedItemType, Set<String> defaultTags) {
-        this(uid, acceptedItemType, null, defaultTags == null ? new HashSet<String>(0) : defaultTags, null, null, null);
-    }
-
-    public Channel(ChannelUID uid, String acceptedItemType, Configuration configuration, Set<String> defaultTags,
-            Map<String, String> properties) {
-        this(uid, acceptedItemType, null, defaultTags == null ? new HashSet<String>(0) : defaultTags, properties, null,
+        this(uid, null, acceptedItemType, null, defaultTags == null ? new HashSet<String>(0) : defaultTags, null, null,
                 null);
     }
 
     public Channel(ChannelUID uid, String acceptedItemType, Configuration configuration, Set<String> defaultTags,
-            Map<String, String> properties, String label, String description) {
+            Map<String, String> properties) {
+        this(uid, null, acceptedItemType, null, defaultTags == null ? new HashSet<String>(0) : defaultTags, properties,
+                null, null);
+    }
+
+    public Channel(ChannelUID uid, ChannelTypeUID channelTypeUID, String acceptedItemType, Configuration configuration,
+            Set<String> defaultTags, Map<String, String> properties, String label, String description) {
         this.uid = uid;
+        this.channelTypeUID = channelTypeUID;
         this.acceptedItemType = acceptedItemType;
         this.configuration = configuration;
         this.label = label;
@@ -109,6 +115,15 @@ public class Channel {
      */
     public ChannelUID getUID() {
         return this.uid;
+    }
+
+    /**
+     * Returns the channel type UID
+     *
+     * @return channel type UID or null if no channel type is specified
+     */
+    public ChannelTypeUID getChannelTypeUID() {
+        return channelTypeUID;
     }
 
     /**
@@ -183,7 +198,8 @@ public class Channel {
      * Returns a set of items, which are linked to the channel.
      *
      * @deprecated Will be removed soon, because it is dynamic data which does not belong to the thing. Use
-     *             {@link ItemChannelLinkRegistry} instead.
+     *             {@link BaseThingHandler#isLinked} instead or alternatively
+     *             {@link ItemChannelLinkRegistry} if you are not within a handler implementation.
      *
      * @return Set of items, which are linked to the channel
      */
@@ -196,8 +212,9 @@ public class Channel {
      * Returns whether at least one item is linked to the channel.
      *
      * @deprecated Will be removed soon, because it is dynamic data which does not belong to the thing. Use
-     *             {@link ItemChannelLinkRegistry} instead.
-     * 
+     *             {@link BaseThingHandler#isLinked} instead or alternatively
+     *             {@link ItemChannelLinkRegistry} if you are not within a handler implementation.
+     *
      * @return true if at least one item is linked to the channel, false
      *         otherwise
      */
