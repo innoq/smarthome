@@ -492,6 +492,7 @@ angular.module('PaperUI.controllers.configuration',
 		$scope.thingTypeChannels = thingType.channels && thingType.channels.length > 0 ? thingType.channels
 				: thingType.channelGroups;
 		$scope.setHeaderText(thingType.description);
+        $scope.refreshChannels(false);
 	});
 }).controller('RemoveThingDialogController', function($scope, $mdDialog, toastService, 
         thingSetupService, homeGroupRepository, thing) {
