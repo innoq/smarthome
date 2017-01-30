@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015 openHAB UG (haftungsbeschraenkt) and others.
+ * Copyright (c) 2014-2016 by the respective copyright holders.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -15,7 +15,8 @@ import org.eclipse.smarthome.core.events.Event
 import org.eclipse.smarthome.core.items.GroupItem
 import org.eclipse.smarthome.core.items.dto.ItemDTOMapper
 import org.eclipse.smarthome.core.items.events.ItemEventFactory.ItemEventPayloadBean
-import org.eclipse.smarthome.core.items.events.ItemEventFactory.ItemStateChangedEventPayloadBean;
+import org.eclipse.smarthome.core.items.events.ItemEventFactory.ItemStateChangedEventPayloadBean
+import org.eclipse.smarthome.core.library.CoreItemFactory;
 import org.eclipse.smarthome.core.library.items.SwitchItem
 import org.eclipse.smarthome.core.library.types.OnOffType
 import org.eclipse.smarthome.core.types.RefreshType
@@ -42,14 +43,14 @@ class ItemEventFactoryTest extends OSGiTest {
     def ITEM_COMMAND_EVENT_TYPE = ItemCommandEvent.TYPE
     def ITEM_STATE_EVENT_TYPE = ItemStateEvent.TYPE
     def ITEM_ADDED_EVENT_TYPE = ItemAddedEvent.TYPE
-    def GROUPITEM_CHANGED_EVENT_TYPE = GroupItemStateChangedEvent.TYPE  
+    def GROUPITEM_CHANGED_EVENT_TYPE = GroupItemStateChangedEvent.TYPE
 
     def ITEM_COMMAND_EVENT_TOPIC = ItemEventFactory.ITEM_COMAND_EVENT_TOPIC.replace("{itemName}", ITEM_NAME)
     def ITEM_STATE_EVENT_TOPIC = ItemEventFactory.ITEM_STATE_EVENT_TOPIC.replace("{itemName}", ITEM_NAME)
     def ITEM_ADDED_EVENT_TOPIC = ItemEventFactory.ITEM_ADDED_EVENT_TOPIC.replace("{itemName}", ITEM_NAME)
     def GROUPITEM_STATE_CHANGED_EVENT_TOPIC = ItemEventFactory.GROUPITEM_STATE_CHANGED_EVENT_TOPIC.replace("{itemName}", GROUP_NAME).replace("{memberName}", ITEM_NAME)
-    
-    
+
+
     def ITEM_COMMAND = OnOffType.ON
     def ITEM_COMMAND_EVENT_PAYLOAD = new Gson().toJson(new ItemEventPayloadBean(ITEM_COMMAND.getClass().getSimpleName(), ITEM_COMMAND.toString()))
     def ITEM_REFRESH_COMMAND_EVENT_PAYLOAD = new Gson().toJson(new ItemEventPayloadBean(RefreshType.REFRESH.getClass().getSimpleName(), RefreshType.REFRESH.toString()))
@@ -57,8 +58,8 @@ class ItemEventFactoryTest extends OSGiTest {
     def ITEM_STATE = OnOffType.OFF
     def NEW_ITEM_STATE = OnOffType.ON
     def ITEM_STATE_EVENT_PAYLOAD = new Gson().toJson(new ItemEventPayloadBean(ITEM_STATE.getClass().getSimpleName(), ITEM_STATE.toString()))
-    def ITEM_ADDED_EVENT_PAYLOAD = new Gson().toJson(ItemDTOMapper.map(ITEM, false))
-    def ITEM_STATE_CHANGED_EVENT_PAYLOAD = new Gson().toJson(new ItemStateChangedEventPayloadBean(NEW_ITEM_STATE.getClass().getSimpleName(),NEW_ITEM_STATE.toString(),ITEM_STATE.getClass().getSimpleName(),ITEM_STATE.toString())) 
+    def ITEM_ADDED_EVENT_PAYLOAD = new Gson().toJson(ItemDTOMapper.map(ITEM))
+    def ITEM_STATE_CHANGED_EVENT_PAYLOAD = new Gson().toJson(new ItemStateChangedEventPayloadBean(NEW_ITEM_STATE.getClass().getSimpleName(),NEW_ITEM_STATE.toString(),ITEM_STATE.getClass().getSimpleName(),ITEM_STATE.toString()))
 
     @Test
     void 'ItemEventFactory creates Event as ItemCommandEvent OnOffType correctly'() {
@@ -116,7 +117,7 @@ class ItemEventFactoryTest extends OSGiTest {
         assertThat itemStateEvent.getSource(), is(SOURCE)
         assertThat itemStateEvent.getItemState(), is(UnDefType.UNDEF)
     }
-    
+
     @Test
     void 'ItemEventFactory creates GroupItemStateChangedEvent correctly'() {
         Event event = factory.createEvent(GROUPITEM_CHANGED_EVENT_TYPE, GROUPITEM_STATE_CHANGED_EVENT_TOPIC, ITEM_STATE_CHANGED_EVENT_PAYLOAD, SOURCE)
@@ -132,7 +133,6 @@ class ItemEventFactoryTest extends OSGiTest {
         assertThat groupItemStateChangedEvent.getSource(), is(null)
         assertThat groupItemStateChangedEvent.getItemState(), is(NEW_ITEM_STATE)
         assertThat groupItemStateChangedEvent.getOldItemState(), is(ITEM_STATE)
-        
     }
 
     @Test
@@ -174,7 +174,7 @@ class ItemEventFactoryTest extends OSGiTest {
         assertThat itemAddedEvent.getPayload(), is(ITEM_ADDED_EVENT_PAYLOAD)
         assertThat itemAddedEvent.getItem(), not(null)
         assertThat itemAddedEvent.getItem().name, is(ITEM_NAME)
-        assertThat itemAddedEvent.getItem().type, is("SwitchItem")
+        assertThat itemAddedEvent.getItem().type, is(CoreItemFactory.SWITCH)
     }
 
     @Test
@@ -185,6 +185,6 @@ class ItemEventFactoryTest extends OSGiTest {
         assertThat event.getTopic(), is(ITEM_ADDED_EVENT_TOPIC)
         assertThat event.getItem(), not(null)
         assertThat event.getItem().name, is(ITEM_NAME)
-        assertThat event.getItem().type, is("SwitchItem")
+        assertThat event.getItem().type, is(CoreItemFactory.SWITCH)
     }
 }

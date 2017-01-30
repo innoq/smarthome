@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015 openHAB UG (haftungsbeschraenkt) and others.
+ * Copyright (c) 2014-2016 by the respective copyright holders.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -57,10 +57,11 @@ public interface Registry<E, K> {
      *
      * @param element
      *            element to be added (must not be null)
+     * @return the added element or newly created object of the same type
      * @throws IllegalStateException
      *             if no ManagedProvider is available
      */
-    public void add(E element);
+    public E add(E element);
 
     /**
      * Updates the given element at the according {@link ManagedProvider}.

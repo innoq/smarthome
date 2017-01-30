@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015 openHAB UG (haftungsbeschraenkt) and others.
+ * Copyright (c) 2014-2016 by the respective copyright holders.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import javax.annotation.security.RolesAllowed;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -34,6 +35,7 @@ import javax.ws.rs.core.Response.ResponseBuilder;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 
+import org.eclipse.smarthome.core.auth.Role;
 import org.eclipse.smarthome.core.events.EventPublisher;
 import org.eclipse.smarthome.core.items.ActiveItem;
 import org.eclipse.smarthome.core.items.GenericItem;
@@ -43,7 +45,8 @@ import org.eclipse.smarthome.core.items.ItemFactory;
 import org.eclipse.smarthome.core.items.ItemNotFoundException;
 import org.eclipse.smarthome.core.items.ItemRegistry;
 import org.eclipse.smarthome.core.items.ManagedItemProvider;
-import org.eclipse.smarthome.core.items.dto.ItemDTO;
+import org.eclipse.smarthome.core.items.dto.GroupItemDTO;
+import org.eclipse.smarthome.core.items.dto.ItemDTOMapper;
 import org.eclipse.smarthome.core.items.events.ItemEventFactory;
 import org.eclipse.smarthome.core.library.items.RollershutterItem;
 import org.eclipse.smarthome.core.library.items.SwitchItem;
@@ -54,7 +57,7 @@ import org.eclipse.smarthome.core.types.State;
 import org.eclipse.smarthome.core.types.TypeParser;
 import org.eclipse.smarthome.io.rest.JSONResponse;
 import org.eclipse.smarthome.io.rest.LocaleUtil;
-import org.eclipse.smarthome.io.rest.RESTResource;
+import org.eclipse.smarthome.io.rest.SatisfiableRESTResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,7 +91,7 @@ import io.swagger.annotations.ApiResponses;
  */
 @Path(ItemResource.PATH_ITEMS)
 @Api(value = ItemResource.PATH_ITEMS)
-public class ItemResource implements RESTResource {
+public class ItemResource implements SatisfiableRESTResource {
 
     private final Logger logger = LoggerFactory.getLogger(ItemResource.class);
 
@@ -97,9 +100,6 @@ public class ItemResource implements RESTResource {
 
     @Context
     UriInfo uriInfo;
-
-    @Context
-    UriInfo localUriInfo;
 
     private ItemRegistry itemRegistry;
     private EventPublisher eventPublisher;
@@ -139,6 +139,7 @@ public class ItemResource implements RESTResource {
     }
 
     @GET
+    @RolesAllowed({ Role.USER, Role.ADMIN })
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "Get all available items.", response = EnrichedItemDTO.class, responseContainer = "List")
     @ApiResponses(value = { @ApiResponse(code = 200, message = "OK") })
@@ -154,8 +155,9 @@ public class ItemResource implements RESTResource {
     }
 
     @GET
+    @RolesAllowed({ Role.USER, Role.ADMIN })
     @Path("/{itemname: [a-zA-Z_0-9]*}")
-    @Produces({ MediaType.WILDCARD })
+    @Produces({ MediaType.APPLICATION_JSON })
     @ApiOperation(value = "Gets a single item.", response = EnrichedItemDTO.class)
     @ApiResponses(value = { @ApiResponse(code = 200, message = "OK"),
             @ApiResponse(code = 404, message = "Item not found") })
@@ -183,6 +185,7 @@ public class ItemResource implements RESTResource {
      * @return
      */
     @GET
+    @RolesAllowed({ Role.USER, Role.ADMIN })
     @Path("/{itemname: [a-zA-Z_0-9]*}/state")
     @Produces(MediaType.TEXT_PLAIN)
     @ApiOperation(value = "Gets the state of an item.")
@@ -208,6 +211,7 @@ public class ItemResource implements RESTResource {
     }
 
     @PUT
+    @RolesAllowed({ Role.USER, Role.ADMIN })
     @Path("/{itemname: [a-zA-Z_0-9]*}/state")
     @Consumes(MediaType.TEXT_PLAIN)
     @ApiOperation(value = "Updates the state of an item.")
@@ -251,6 +255,7 @@ public class ItemResource implements RESTResource {
     }
 
     @POST
+    @RolesAllowed({ Role.USER, Role.ADMIN })
     @Path("/{itemname: [a-zA-Z_0-9]*}")
     @Consumes(MediaType.TEXT_PLAIN)
     @ApiOperation(value = "Sends a command to an item.")
@@ -297,6 +302,7 @@ public class ItemResource implements RESTResource {
     }
 
     @PUT
+    @RolesAllowed({ Role.ADMIN })
     @Path("/{itemName: [a-zA-Z_0-9]*}/members/{memberItemName: [a-zA-Z_0-9]*}")
     @ApiOperation(value = "Adds a new member to a group item.")
     @ApiResponses(value = { @ApiResponse(code = 200, message = "OK"),
@@ -334,6 +340,7 @@ public class ItemResource implements RESTResource {
     }
 
     @DELETE
+    @RolesAllowed({ Role.ADMIN })
     @Path("/{itemName: [a-zA-Z_0-9]*}/members/{memberItemName: [a-zA-Z_0-9]*}")
     @ApiOperation(value = "Removes an existing member from a group item.")
     @ApiResponses(value = { @ApiResponse(code = 200, message = "OK"),
@@ -371,6 +378,7 @@ public class ItemResource implements RESTResource {
     }
 
     @DELETE
+    @RolesAllowed({ Role.ADMIN })
     @Path("/{itemname: [a-zA-Z_0-9]*}")
     @ApiOperation(value = "Removes an item from the registry.")
     @ApiResponses(value = { @ApiResponse(code = 200, message = "OK"),
@@ -386,7 +394,8 @@ public class ItemResource implements RESTResource {
     }
 
     @PUT
-    @Path("/{itemname: [a-zA-Z_0-9]*}/tags/{tag: [a-zA-Z_0-9]*}")
+    @RolesAllowed({ Role.ADMIN })
+    @Path("/{itemname: [a-zA-Z_0-9]*}/tags/{tag}")
     @ApiOperation(value = "Adds a tag to an item.")
     @ApiResponses(value = { @ApiResponse(code = 200, message = "OK"),
             @ApiResponse(code = 404, message = "Item not found."),
@@ -412,7 +421,8 @@ public class ItemResource implements RESTResource {
     }
 
     @DELETE
-    @Path("/{itemname: [a-zA-Z_0-9]*}/tags/{tag: [a-zA-Z_0-9]*}")
+    @RolesAllowed({ Role.ADMIN })
+    @Path("/{itemname: [a-zA-Z_0-9]*}/tags/{tag}")
     @ApiOperation(value = "Removes a tag from an item.")
     @ApiResponses(value = { @ApiResponse(code = 200, message = "OK"),
             @ApiResponse(code = 404, message = "Item not found."),
@@ -445,16 +455,18 @@ public class ItemResource implements RESTResource {
      * @return
      */
     @PUT
+    @RolesAllowed({ Role.ADMIN })
     @Path("/{itemname: [a-zA-Z_0-9]*}")
     @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "Adds a new item to the registry or updates the existing item.")
-    @ApiResponses(value = { @ApiResponse(code = 200, message = "OK"), @ApiResponse(code = 400, message = "Item null."),
+    @ApiResponses(value = { @ApiResponse(code = 200, message = "OK"),
+            @ApiResponse(code = 201, message = "Item created."), @ApiResponse(code = 400, message = "Item null."),
             @ApiResponse(code = 404, message = "Item not found."),
             @ApiResponse(code = 405, message = "Item not editable.") })
     public Response createOrUpdateItem(
             @HeaderParam(HttpHeaders.ACCEPT_LANGUAGE) @ApiParam(value = "language") String language,
             @PathParam("itemname") @ApiParam(value = "item name", required = true) String itemname,
-            @ApiParam(value = "item data", required = true) ItemDTO item) {
+            @ApiParam(value = "item data", required = true) GroupItemDTO item) {
         final Locale locale = LocaleUtil.getLocale(language);
 
         // If we didn't get an item bean, then return!
@@ -462,28 +474,13 @@ public class ItemResource implements RESTResource {
             return Response.status(Status.BAD_REQUEST).build();
         }
 
-        GenericItem newItem = null;
-
-        if (item.type != null && item.type.equals("GroupItem")) {
-            newItem = new GroupItem(itemname);
-        } else {
-            String itemType = item.type.substring(0, item.type.length() - 4);
-            for (ItemFactory itemFactory : itemFactories) {
-                newItem = itemFactory.createItem(itemType, itemname);
-                if (newItem != null) {
-                    break;
-                }
-            }
-        }
+        ActiveItem newItem = ItemDTOMapper.map(item, itemFactories);
 
         if (newItem == null) {
             logger.warn("Received HTTP PUT request at '{}' with an invalid item type '{}'.", uriInfo.getPath(),
                     item.type);
             return Response.status(Status.BAD_REQUEST).build();
         }
-
-        // See if an existing item of this name exists.
-        Item existingItem = getItem(itemname);
 
         // Update the label
         newItem.setLabel(item.label);
@@ -498,7 +495,7 @@ public class ItemResource implements RESTResource {
         }
 
         // Save the item
-        if (existingItem == null) {
+        if (getItem(itemname) == null) {
             // item does not yet exist, create it
             managedItemProvider.add(newItem);
             return getItemResponse(Status.CREATED, newItem, locale, null);
@@ -510,7 +507,8 @@ public class ItemResource implements RESTResource {
         } else {
             // Item exists but cannot be updated
             logger.warn("Cannot update existing item '{}', because is not managed.", itemname);
-            return JSONResponse.createErrorResponse(Status.CONFLICT, "Cannot update non-managed Item " + itemname);
+            return JSONResponse.createErrorResponse(Status.METHOD_NOT_ALLOWED,
+                    "Cannot update non-managed Item " + itemname);
         }
     }
 
@@ -573,5 +571,11 @@ public class ItemResource implements RESTResource {
             }
         }
         return beans;
+    }
+
+    @Override
+    public boolean isSatisfied() {
+        return itemRegistry != null && managedItemProvider != null && eventPublisher != null
+                && !itemFactories.isEmpty();
     }
 }

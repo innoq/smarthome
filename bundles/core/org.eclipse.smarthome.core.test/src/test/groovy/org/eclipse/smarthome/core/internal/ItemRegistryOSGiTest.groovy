@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015 openHAB UG (haftungsbeschraenkt) and others.
+ * Copyright (c) 2014-2016 by the respective copyright holders.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -14,6 +14,7 @@ import static org.junit.matchers.JUnitMatchers.*
 import java.util.concurrent.atomic.AtomicInteger
 
 import org.eclipse.smarthome.core.events.EventSubscriber
+import org.eclipse.smarthome.core.items.GenericItem
 import org.eclipse.smarthome.core.items.GroupItem
 import org.eclipse.smarthome.core.items.Item
 import org.eclipse.smarthome.core.items.ItemProvider
@@ -33,11 +34,12 @@ import org.junit.Test
 import com.google.common.collect.Sets
 
 /**
- * The {@link ItemRegistryOSGiTest} runs inside an OSGi container and tests the {@link ItemRegistry}.  
- * 
+ * The {@link ItemRegistryOSGiTest} runs inside an OSGi container and tests the {@link ItemRegistry}.
+ *
  * @author Dennis Nobel - Initial contribution
  * @author Andre Fuechsel - extended with tag tests
  * @author Kai Kreuzer - added tests for all items changed cases
+ * @author Sebastian Janzen - added test for getItemsByTag
  */
 class ItemRegistryOSGiTest extends OSGiTest {
 
@@ -172,6 +174,29 @@ class ItemRegistryOSGiTest extends OSGiTest {
         unregisterService itemProvider
 
         assertThat itemRegistry.getItems().size(), is(0)
+    }
+
+    @Test
+    void 'assert getItemsByTag can filter by class and tag'() {
+
+        assertThat itemRegistry.getItemsByTag(SwitchItem.class, CAMERA_TAG).size(), is(0)
+
+        registerService itemProvider
+
+        def items = itemRegistry.getItemsByTag(SwitchItem.class, CAMERA_TAG)
+        assertThat items.size(), is(2)
+        assertThat items.first().name, is(equalTo(CAMERA_ITEM_NAME1))
+        assertThat items.last().name, is(equalTo(CAMERA_ITEM_NAME2))
+    }
+
+    @Test
+    void 'assert getItemsByTag can filter by class and tag with GenericItem'() {
+
+        assertThat itemRegistry.getItemsByTag(GenericItem.class, CAMERA_TAG).size(), is(0)
+
+        registerService itemProvider
+
+        assertThat itemRegistry.getItemsByTag(GenericItem.class, CAMERA_TAG).size(), is(3)
     }
 
     @Test
@@ -328,6 +353,31 @@ class ItemRegistryOSGiTest extends OSGiTest {
         itemsChangeListener.removed(itemProvider, newItem)
         waitForAssert {assertThat receivedEvent, not(null)}
         assertThat receivedEvent, is(instanceOf(ItemRemovedEvent))
+    }
+
+    @Test
+    void 'assert that a changed item still has an event publisher'() {
+        registerService itemProvider
+
+        // add new item
+        def item = new SwitchItem("SomeSwitch")
+        assertThat item.eventPublisher, is(nullValue())
+        itemsChangeListener.added(itemProvider, item)
+        assertThat item.eventPublisher, is(notNullValue())
+
+        // update item
+        def oldItem = item;
+        def newItem = new SwitchItem("SomeSwitch")
+        assertThat oldItem.eventPublisher, is(notNullValue())
+        assertThat newItem.eventPublisher, is(nullValue())
+        itemsChangeListener.updated(itemProvider, oldItem, newItem)
+        assertThat oldItem.eventPublisher, is(nullValue())
+        assertThat newItem.eventPublisher, is(notNullValue())
+
+        // remove item
+        assertThat newItem.eventPublisher, is(notNullValue())
+        itemsChangeListener.removed(itemProvider, newItem)
+        assertThat newItem.eventPublisher, is(nullValue())
     }
 
 }

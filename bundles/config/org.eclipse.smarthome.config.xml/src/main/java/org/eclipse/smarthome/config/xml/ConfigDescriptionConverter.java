@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015 openHAB UG (haftungsbeschraenkt) and others.
+ * Copyright (c) 2014-2016 by the respective copyright holders.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -46,7 +46,6 @@ public class ConfigDescriptionConverter extends GenericUnmarshaller<ConfigDescri
         this.attributeMapValidator = new ConverterAttributeMapValidator(new String[][] { { "uri", "false" } });
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Object unmarshal(HierarchicalStreamReader reader, UnmarshallingContext context) {
         ConfigDescription configDescription = null;
@@ -64,8 +63,8 @@ public class ConfigDescriptionConverter extends GenericUnmarshaller<ConfigDescri
         try {
             uri = new URI(uriText);
         } catch (NullPointerException | URISyntaxException ex) {
-            throw new ConversionException("The URI '" + uriText + "' in node '" + reader.getNodeName()
-                    + "' is invalid!", ex);
+            throw new ConversionException(
+                    "The URI '" + uriText + "' in node '" + reader.getNodeName() + "' is invalid!", ex);
         }
 
         // create the lists to hold parameters and groups

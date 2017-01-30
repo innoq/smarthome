@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015 openHAB UG (haftungsbeschraenkt) and others.
+ * Copyright (c) 2014-2016 by the respective copyright holders.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,6 +8,7 @@
 package org.eclipse.smarthome.io.rest.core.config;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Dictionary;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -78,7 +79,16 @@ public class ConfigurationService {
             }
         }
         for (Entry<String, Object> configurationParameter : configurationParameters) {
-            properties.put(configurationParameter.getKey(), configurationParameter.getValue());
+            Object value = configurationParameter.getValue();
+            if (value == null) {
+                properties.remove(configurationParameter.getKey());
+            } else if (value instanceof String || value instanceof Integer || value instanceof Boolean
+                    || value instanceof Object[] || value instanceof Collection) {
+                properties.put(configurationParameter.getKey(), value);
+            } else {
+                // the config admin does not support complex object types, so let's store the string representation
+                properties.put(configurationParameter.getKey(), value.toString());
+            }
         }
         configuration.update(properties);
         return oldConfiguration;

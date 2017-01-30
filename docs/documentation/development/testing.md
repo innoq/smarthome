@@ -15,9 +15,9 @@ In OSGi tests are implemented in a separate fragment bundle, which host is the b
 
 	Manifest-Version: 1.0
 	Bundle-ManifestVersion: 2
-	Bundle-Name: Tests for the openHAB Core
+	Bundle-Name: Tests for the Eclipse SmartHome Core
 	Bundle-SymbolicName: org.eclipse.smarthome.core.test
-	Bundle-Version: 0.8.0.qualifier
+	Bundle-Version: 0.9.0.qualifier
 	Bundle-Vendor: Eclipse.org/SmartHome
 	Fragment-Host: org.eclipse.smarthome.core
 	Bundle-RequiredExecutionEnvironment: JavaSE-1.7

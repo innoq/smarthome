@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015 openHAB UG (haftungsbeschraenkt) and others.
+ * Copyright (c) 2014-2016 by the respective copyright holders.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -8,13 +8,16 @@
 package org.eclipse.smarthome.ui.basic.internal.render;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.smarthome.model.sitemap.Frame;
 import org.eclipse.smarthome.model.sitemap.Sitemap;
+import org.eclipse.smarthome.model.sitemap.SitemapProvider;
 import org.eclipse.smarthome.model.sitemap.Widget;
 import org.eclipse.smarthome.ui.basic.internal.WebAppConfig;
 import org.eclipse.smarthome.ui.basic.internal.servlet.WebAppServlet;
@@ -74,7 +77,7 @@ public class PageRenderer extends AbstractWidgetRenderer {
         if (label.contains("[") && label.endsWith("]")) {
             label = label.replace("[", "").replace("]", "");
         }
-        snippet = StringUtils.replace(snippet, "%label%", label);
+        snippet = StringUtils.replace(snippet, "%label%", escapeHtml(label));
         snippet = StringUtils.replace(snippet, "%servletname%", WebAppServlet.SERVLET_NAME);
         snippet = StringUtils.replace(snippet, "%sitemap%", sitemap);
         snippet = StringUtils.replace(snippet, "%htmlclass%", config.getCssClassList());
@@ -102,7 +105,7 @@ public class PageRenderer extends AbstractWidgetRenderer {
             EObject firstChild = children.get(0);
             EObject parent = firstChild.eContainer();
             if (!(firstChild instanceof Frame || parent instanceof Frame || parent instanceof Sitemap
-                    || parent instanceof List)) {
+                    || parent instanceof org.eclipse.smarthome.model.sitemap.List)) {
                 String frameSnippet = getSnippet("frame");
                 frameSnippet = StringUtils.replace(frameSnippet, "%label%", "");
                 frameSnippet = StringUtils.replace(frameSnippet, "%frame_class%", "mdl-form--no-label");
@@ -158,11 +161,6 @@ public class PageRenderer extends AbstractWidgetRenderer {
      */
     @Override
     public EList<Widget> renderWidget(Widget w, StringBuilder sb) throws RenderException {
-        // Check if this widget is visible
-        if (itemUIRegistry.getVisiblity(w) == false) {
-            return null;
-        }
-
         for (WidgetRenderer renderer : widgetRenderers) {
             if (renderer.canRender(w)) {
                 return renderer.renderWidget(w, sb);
@@ -188,5 +186,40 @@ public class PageRenderer extends AbstractWidgetRenderer {
         for (WidgetRenderer renderer : widgetRenderers) {
             renderer.setConfig(config);
         }
+    }
+
+    public CharSequence renderSitemapList(Set<SitemapProvider> sitemapProviders) throws RenderException {
+        List<String> sitemapList = new LinkedList<String>();
+
+        for (SitemapProvider sitemapProvider : sitemapProviders) {
+            Set<String> sitemaps = sitemapProvider.getSitemapNames();
+            for (String sitemap : sitemaps) {
+                if (!sitemap.equals("_default")) {
+                    sitemapList.add(sitemap);
+                }
+            }
+        }
+
+        String pageSnippet = getSnippet("main_static");
+        String listSnippet = getSnippet("sitemaps_list");
+        String sitemapSnippet = getSnippet("sitemaps_list_item");
+
+        StringBuilder sb = new StringBuilder();
+        if (sitemapList.isEmpty()) {
+            sb.append(getSnippet("sitemaps_list_empty"));
+        } else {
+            for (String sitemap : sitemapList) {
+                sb.append(StringUtils.replace(sitemapSnippet, "%sitemap%", sitemap));
+            }
+        }
+
+        listSnippet = StringUtils.replace(listSnippet, "%items%", sb.toString());
+
+        pageSnippet = StringUtils.replace(pageSnippet, "%title%", "BasicUI");
+        pageSnippet = StringUtils.replace(pageSnippet, "%htmlclass%",
+                config.getCssClassList() + " page-welcome-sitemaps");
+        pageSnippet = StringUtils.replace(pageSnippet, "%content%", listSnippet);
+
+        return pageSnippet;
     }
 }

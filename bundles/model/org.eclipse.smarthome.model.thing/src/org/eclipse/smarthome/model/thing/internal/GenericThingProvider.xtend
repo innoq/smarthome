@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014 openHAB UG (haftungsbeschraenkt) and others.
+ * Copyright (c) 2014-2016 by the respective copyright holders.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,10 +7,19 @@
  */
 package org.eclipse.smarthome.model.thing.internal
 
+import java.util.ArrayList
 import java.util.Collection
+import java.util.HashSet
 import java.util.List
+import java.util.Map
 import java.util.Set
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
+import org.eclipse.smarthome.config.core.BundleProcessor
+import org.eclipse.smarthome.config.core.BundleProcessorVetoManager
 import org.eclipse.smarthome.config.core.Configuration
+import org.eclipse.smarthome.core.common.registry.AbstractProvider
+import org.eclipse.smarthome.core.i18n.LocaleProvider
 import org.eclipse.smarthome.core.thing.Bridge
 import org.eclipse.smarthome.core.thing.Channel
 import org.eclipse.smarthome.core.thing.ChannelUID
@@ -18,30 +27,30 @@ import org.eclipse.smarthome.core.thing.Thing
 import org.eclipse.smarthome.core.thing.ThingProvider
 import org.eclipse.smarthome.core.thing.ThingTypeUID
 import org.eclipse.smarthome.core.thing.ThingUID
+import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory
+import org.eclipse.smarthome.core.thing.binding.builder.BridgeBuilder
 import org.eclipse.smarthome.core.thing.binding.builder.ChannelBuilder
 import org.eclipse.smarthome.core.thing.binding.builder.ThingBuilder
 import org.eclipse.smarthome.core.thing.type.ChannelDefinition
+import org.eclipse.smarthome.core.thing.type.ChannelKind
+import org.eclipse.smarthome.core.thing.type.ChannelTypeUID
 import org.eclipse.smarthome.core.thing.type.ThingTypeRegistry
+import org.eclipse.smarthome.core.thing.type.TypeResolver
+import org.eclipse.smarthome.core.thing.util.ThingHelper
 import org.eclipse.smarthome.model.core.ModelRepository
 import org.eclipse.smarthome.model.core.ModelRepositoryChangeListener
+import org.eclipse.smarthome.model.thing.thing.ModelBridge
 import org.eclipse.smarthome.model.thing.thing.ModelChannel
 import org.eclipse.smarthome.model.thing.thing.ModelPropertyContainer
 import org.eclipse.smarthome.model.thing.thing.ModelThing
 import org.eclipse.smarthome.model.thing.thing.ThingModel
+import org.eclipse.xtend.lib.annotations.Data
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.eclipse.smarthome.core.thing.binding.builder.BridgeBuilder
-import java.util.Map
-import org.eclipse.smarthome.core.thing.util.ThingHelper
-import java.util.concurrent.ConcurrentHashMap
-import org.eclipse.smarthome.model.thing.thing.ModelBridge
-import org.eclipse.smarthome.core.common.registry.AbstractProvider
-import org.eclipse.smarthome.core.thing.binding.ThingHandlerFactory
-import java.util.concurrent.CopyOnWriteArrayList
-import org.eclipse.smarthome.model.thing.internal.GenericThingProvider.QueueContent
-import java.util.ArrayList
-import org.eclipse.smarthome.core.thing.type.TypeResolver
-import java.util.Locale
+import org.eclipse.smarthome.config.core.ConfigDescriptionRegistry
+import org.eclipse.smarthome.core.thing.type.ChannelType
+import java.math.BigDecimal
+import org.eclipse.smarthome.config.core.ConfigDescriptionParameter.Type
 
 /**
  * {@link ThingProvider} implementation which computes *.things files.
@@ -51,161 +60,212 @@ import java.util.Locale
  *         https://bugs.eclipse.org/bugs/show_bug.cgi?id=450236 - Considering
  *         ThingType Description
  * @author Simon Kaufmann - Added asynchronous retry in case the handler 
- *         factory cannot load a thing yet (bug 470368) 
+ *         factory cannot load a thing yet (bug 470368), 
+ *         added delay until ThingTypes are fully loaded
+ * @author Markus Rathgeb - Add locale provider support
  * 
  */
 class GenericThingProvider extends AbstractProvider<Thing> implements ThingProvider, ModelRepositoryChangeListener {
 
-	private ModelRepository modelRepository
+    private LocaleProvider localeProvider
 
-	private ThingTypeRegistry thingTypeRegistry
+    private ModelRepository modelRepository
 
-	private Map<String, Collection<Thing>> thingsMap = new ConcurrentHashMap
+    private ThingTypeRegistry thingTypeRegistry
 
-	private List<ThingHandlerFactory> thingHandlerFactories = new CopyOnWriteArrayList<ThingHandlerFactory>()
+    private Map<String, Collection<Thing>> thingsMap = new ConcurrentHashMap
+
+    private List<ThingHandlerFactory> thingHandlerFactories = new CopyOnWriteArrayList<ThingHandlerFactory>()
+    
+    private ConfigDescriptionRegistry configDescriptionRegistry
 
     private val List<QueueContent> queue = new CopyOnWriteArrayList
     private var Thread lazyRetryThread = null
     
-	private static final Logger logger = LoggerFactory.getLogger(GenericThingProvider)
+    private val BundleProcessorVetoManager<ThingHandlerFactory> vetoManager = new BundleProcessorVetoManager(new BundleProcessorVetoManager.Action<ThingHandlerFactory>() {
+        override apply(ThingHandlerFactory thingHandlerFactory) {
+            thingsMap.keySet.forEach [
+                // create things for this specific thingHandlerFactory from the model.
+                createThingsFromModelForThingHandlerFactory(it, thingHandlerFactory)
+            ]
+        }
+    })
+    
+    private static final Logger logger = LoggerFactory.getLogger(GenericThingProvider)
 
-	def void activate() {
-		modelRepository.getAllModelNamesOfType("things").forEach [
-			createThingsFromModel
-		]
-	}
+    def void activate() {
+        modelRepository.getAllModelNamesOfType("things").forEach [
+            createThingsFromModel
+        ]
+    }
 
-	override Collection<Thing> getAll() {
-		thingsMap.values.flatten.toList
-	}
+    override Collection<Thing> getAll() {
+        thingsMap.values.flatten.toList
+    }
 
-	def private void createThingsFromModel(String modelName) {
-		logger.debug("Read things from model '{}'", modelName);
+    def private void createThingsFromModel(String modelName) {
+        logger.debug("Read things from model '{}'", modelName);
+        if (thingsMap.get(modelName) == null) {
+            thingsMap.put(modelName, newArrayList)
+        }
+        if (modelRepository != null) {
+            val model = modelRepository.getModel(modelName) as ThingModel
+            model?.things?.map[
+                // Get the ThingHandlerFactories
+                val ThingUID thingUID = constructThingUID
+                if (thingUID != null) {
+                    val thingTypeUID = constructThingTypeUID(thingUID)
+                    return thingHandlerFactories.findFirst[
+                        supportsThingType(thingTypeUID)
+                    ]
+                } else {
+                    // ignore the Thing because its definition is broken
+                    return null
+                }
+            ]?.filter[
+                // Drop it if there is no ThingHandlerFactory yet which can handle it 
+                it != null
+            ]?.toSet?.forEach[
+                // Execute for each unique ThingHandlerFactory
+                vetoManager.applyActionFor(it)
+            ]
+        }
+    }
+    
+    def private ThingUID constructThingUID(ModelThing modelThing) {
+        if (modelThing.id != null) {
+            return new ThingUID(modelThing.id)
+        } else {
+            if (modelThing.bridgeUID != null) {
+                val bindingId = new ThingUID(modelThing.bridgeUID).bindingId
+                return new ThingUID(bindingId, modelThing.thingTypeId, modelThing.thingId)
+            } else {
+                logger.warn("Thing {} does not have a bridge so it needs to be defined in full notation like <bindingId>:{}:{}", modelThing.thingTypeId, modelThing.thingTypeId, modelThing.thingId)
+                return null
+            }
+        }
+    }
+    
+    def private ThingTypeUID constructThingTypeUID(ModelThing modelThing, ThingUID thingUID) {
+        if (modelThing.thingTypeId != null) {
+            return new ThingTypeUID(thingUID.bindingId, modelThing.thingTypeId)
+        } else {
+            return new ThingTypeUID(thingUID.bindingId, thingUID.thingTypeId)
+        }
+    }
 
-		val things = newArrayList
-		if (modelRepository != null) {
-			val model = modelRepository.getModel(modelName) as ThingModel
-			if (model != null) {
-				model.things.forEach [
-					createThing(null, things)
-				]
-			}
-		}
-		thingsMap.put(modelName, things)
-	}
+    def private void createThing(ModelThing modelThing, Bridge parentBridge, Collection<Thing> thingList,
+        ThingHandlerFactory thingHandlerFactory) {
+        val ThingUID thingUID = getThingUID(modelThing, parentBridge?.UID)
+        if (thingUID == null) {
+            // ignore the Thing because its definition is broken
+            return
+        }
+        val thingTypeUID = modelThing.constructThingTypeUID(thingUID)
+        var ThingUID bridgeUID = null
+        if (parentBridge != null) {
+            bridgeUID = parentBridge.UID
+        } else {
+            if (modelThing.bridgeUID != null && !modelThing.bridgeUID.empty) {
+                bridgeUID = new ThingUID(modelThing.bridgeUID)
+            }
+        }
 
-	def private void createThing(ModelThing modelThing, Bridge parentBridge, Collection<Thing> thingList) {
-		createThing(modelThing, parentBridge, thingList, null)
-	}
+        if (!isSupportedByThingHandlerFactory(thingTypeUID, thingHandlerFactory)) {
+            // return silently, we were not asked to do anything
+            return
+        }
 
-	def private void createThing(ModelThing modelThing, Bridge parentBridge, Collection<Thing> thingList,
-		ThingHandlerFactory thingHandlerFactory) {
-		var ThingTypeUID thingTypeUID = null
-		var ThingUID thingUID = null
-		var ThingUID bridgeUID = null
-		if (parentBridge != null) {
-			val bindingId = parentBridge.thingTypeUID.bindingId
-			val thingTypeId = modelThing.thingTypeId
-			val thingId = modelThing.thingId
-			thingTypeUID = new ThingTypeUID(bindingId, thingTypeId)
-			thingUID = new ThingUID(thingTypeUID, thingId, parentBridge.parentPath)
-			bridgeUID = parentBridge.UID
-		} else {
-			thingUID = new ThingUID(modelThing.id)
-			thingTypeUID = new ThingTypeUID(thingUID.bindingId, thingUID.thingTypeId)
-			if(modelThing.bridgeUID != null && !modelThing.bridgeUID.empty) {
-				bridgeUID = new ThingUID(modelThing.bridgeUID)
-			}
-		}
+        logger.trace("Creating thing for type '{}' with UID '{}.", thingTypeUID, thingUID);
+        val configuration = modelThing.createConfiguration
+        val uid = thingUID
+        if (thingList.exists[UID.equals(uid)]) {
+            // the thing is already in the list and nothing will be done!
+            logger.debug("Thing already exists {}", uid.toString)
+            return
+        }
 
-		if (!isSupportedByThingHandlerFactory(thingTypeUID, thingHandlerFactory)) {
-			// return silently, we were not asked to do anything
-			return
-		}
-
-		logger.trace("Creating thing for type '{}' with UID '{}.", thingTypeUID, thingUID);
-		val configuration = modelThing.createConfiguration
-		val uid = thingUID
-		if (thingList.exists[UID.equals(uid)]) {
-			//the thing is already in the list and nothing will be done!
-			logger.debug("Thing already exists {}", uid.toString)
-			return
-		}
-		
         val thingType = thingTypeUID.thingType
 
         val label = if (modelThing.label != null) modelThing.label else thingType?.label
+        
+        val location = modelThing.location
 
-		val thingFromHandler = getThingFromThingHandlerFactories(thingTypeUID, label, configuration, thingUID, bridgeUID,
-			thingHandlerFactory)
+        val thingFromHandler = getThingFromThingHandlerFactories(thingTypeUID, label, configuration, thingUID,
+            bridgeUID, thingHandlerFactory)
 
-		val thingBuilder = if (modelThing instanceof ModelBridge) {
-				BridgeBuilder.create(thingTypeUID, thingUID)
-			} else {
-				ThingBuilder.create(thingTypeUID, thingUID)
-			}
+        val thingBuilder = if (modelThing instanceof ModelBridge) {
+                BridgeBuilder.create(thingTypeUID, thingUID)
+            } else {
+                ThingBuilder.create(thingTypeUID, thingUID)
+            }
 
-		thingBuilder.withConfiguration(configuration)
-		thingBuilder.withBridge(bridgeUID)
-		thingBuilder.withLabel(label)
-		
-		val channels = createChannels(thingTypeUID, thingUID, modelThing.channels, thingType?.channelDefinitions ?: newArrayList)
-		thingBuilder.withChannels(channels)
+        thingBuilder.withConfiguration(configuration)
+        thingBuilder.withBridge(bridgeUID)
+        thingBuilder.withLabel(label)
+        thingBuilder.withLocation(location)
 
-		var thing = thingBuilder.build
+        val channels = createChannels(thingTypeUID, thingUID, modelThing.channels,
+            thingType?.channelDefinitions ?: newArrayList)
+        thingBuilder.withChannels(channels)
 
-		//ask the ThingHandlerFactories for a thing
-		if (thingFromHandler != null) {
+        var thing = thingBuilder.build
 
-			//If a thingHandlerFactory could create a thing, merge the content of the modelThing to it
-			thingFromHandler.merge(thing)
-		}
+        // ask the ThingHandlerFactories for a thing
+        if (thingFromHandler != null) {
 
-		thingList += thingFromHandler ?: thing
+            // If a thingHandlerFactory could create a thing, merge the content of the modelThing to it
+            thingFromHandler.merge(thing)
+        }
 
-		if (modelThing instanceof ModelBridge) {
-			val bridge = (thingFromHandler ?: thing) as Bridge
-			modelThing.things.forEach [
-				createThing(bridge as Bridge, thingList, thingHandlerFactory)
-			]
-		}
-	}
+        thingList += thingFromHandler ?: thing
 
-	def private boolean isSupportedByThingHandlerFactory(ThingTypeUID thingTypeUID, ThingHandlerFactory specific) {
-		if (specific !== null) {
-			return specific.supportsThingType(thingTypeUID)
-		}
-		for (ThingHandlerFactory thingHandlerFactory : thingHandlerFactories) {
-			if (thingHandlerFactory.supportsThingType(thingTypeUID)) {
-				return true;
-			}
-		}
-		return false;
-	}
+        if (modelThing instanceof ModelBridge) {
+            val bridge = (thingFromHandler ?: thing) as Bridge
+            modelThing.things.forEach [
+                createThing(bridge as Bridge, thingList, thingHandlerFactory)
+            ]
+        }
+    }
 
-	def private Thing getThingFromThingHandlerFactories(ThingTypeUID thingTypeUID, String label, Configuration configuration,
-		ThingUID thingUID, ThingUID bridgeUID, ThingHandlerFactory specific) {
-		if (specific != null && specific.supportsThingType(thingTypeUID)) {
-			logger.trace("Creating thing from specific ThingHandlerFactory {} for thingType {}", specific, thingTypeUID)
-			return getThingFromThingHandlerFactory(thingTypeUID, label, configuration, thingUID, bridgeUID, specific)
-		}
-		for (ThingHandlerFactory thingHandlerFactory : thingHandlerFactories) {
-			logger.trace("Searching thingHandlerFactory for thingType: {}", thingTypeUID)
-			if (thingHandlerFactory.supportsThingType(thingTypeUID)) {
-			    return getThingFromThingHandlerFactory(thingTypeUID, label, configuration, thingUID, bridgeUID, thingHandlerFactory)
-			}
-		}
-		null
-	}
-	
-	def private getThingFromThingHandlerFactory(ThingTypeUID thingTypeUID, String label, Configuration configuration,
+    def private boolean isSupportedByThingHandlerFactory(ThingTypeUID thingTypeUID, ThingHandlerFactory specific) {
+        if (specific !== null) {
+            return specific.supportsThingType(thingTypeUID)
+        }
+        for (ThingHandlerFactory thingHandlerFactory : thingHandlerFactories) {
+            if (thingHandlerFactory.supportsThingType(thingTypeUID)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    def private Thing getThingFromThingHandlerFactories(ThingTypeUID thingTypeUID, String label,
+        Configuration configuration, ThingUID thingUID, ThingUID bridgeUID, ThingHandlerFactory specific) {
+        if (specific != null && specific.supportsThingType(thingTypeUID)) {
+            logger.trace("Creating thing from specific ThingHandlerFactory {} for thingType {}", specific, thingTypeUID)
+            return getThingFromThingHandlerFactory(thingTypeUID, label, configuration, thingUID, bridgeUID, specific)
+        }
+        for (ThingHandlerFactory thingHandlerFactory : thingHandlerFactories) {
+            logger.trace("Searching thingHandlerFactory for thingType: {}", thingTypeUID)
+            if (thingHandlerFactory.supportsThingType(thingTypeUID)) {
+                return getThingFromThingHandlerFactory(thingTypeUID, label, configuration, thingUID, bridgeUID,
+                    thingHandlerFactory)
+            }
+        }
+        null
+    }
+
+    def private getThingFromThingHandlerFactory(ThingTypeUID thingTypeUID, String label, Configuration configuration,
         ThingUID thingUID, ThingUID bridgeUID, ThingHandlerFactory thingHandlerFactory) {
         val thing = thingHandlerFactory.createThing(thingTypeUID, configuration, thingUID, bridgeUID)
         if (thing == null) {
             // Apparently the HandlerFactory's eyes were bigger than its stomach...
             // Possible cause: Asynchronous loading of the XML files
             // Add the data to the queue in order to retry it later
-            logger.debug("ThingHandlerFactory '{}' claimed it can handle '{}' type but actually did not. Queued for later refresh.", thingHandlerFactory.class.simpleName, thingTypeUID.asString)
+            logger.debug(
+                "ThingHandlerFactory '{}' claimed it can handle '{}' type but actually did not. Queued for later refresh.",
+                thingHandlerFactory.class.simpleName, thingTypeUID.asString)
             queue.add(new QueueContent(thingTypeUID, label, configuration, thingUID, bridgeUID, thingHandlerFactory))
             if (lazyRetryThread == null || !lazyRetryThread.alive) {
                 lazyRetryThread = new Thread(lazyRetryRunnable)
@@ -217,191 +277,274 @@ class GenericThingProvider extends AbstractProvider<Thing> implements ThingProvi
         return thing
     }
 
-	def dispatch void merge(Thing targetThing, Thing sourceThing) {
-		targetThing.bridgeUID = sourceThing.bridgeUID
-		targetThing.configuration.merge(sourceThing.configuration)
-		targetThing.merge(sourceThing.channels)
+    def dispatch void merge(Thing targetThing, Thing sourceThing) {
+        targetThing.bridgeUID = sourceThing.bridgeUID
+        targetThing.configuration.merge(sourceThing.configuration)
+        targetThing.merge(sourceThing.channels)
+        targetThing.location = sourceThing.location
+        targetThing.label = sourceThing.label
+    }
 
-	}
+    def dispatch void merge(Configuration target, Configuration source) {
+        source.keySet.forEach [
+            target.put(it, source.get(it))
+        ]
+    }
 
-	def dispatch void merge(Configuration target, Configuration source) {
-		source.keySet.forEach [
-			target.put(it, source.get(it))
-		]
-	}
+    def dispatch void merge(Thing targetThing, List<Channel> source) {
+        val List<Channel> channelsToAdd = newArrayList()
+        source.forEach [ sourceChannel |
+            val targetChannels = targetThing.channels.filter[it.UID.equals(sourceChannel.UID)]
+            targetChannels.forEach [
+                merge(sourceChannel)
+            ]
+            if (targetChannels.empty) {
+                channelsToAdd.add(sourceChannel)
+            }
+        ]
 
-	def dispatch void merge(Thing targetThing, List<Channel> source) {
-		val List<Channel> channelsToAdd = newArrayList()
-		source.forEach [ sourceChannel |
-			val targetChannels = targetThing.channels.filter[it.UID.equals(sourceChannel.UID)]
-			targetChannels.forEach [
-				merge(sourceChannel)
-			]
-			if (targetChannels.empty) {
-				channelsToAdd.add(sourceChannel)
-			}
-		]
+        // add the channels only defined in source list to the target list
+        ThingHelper.addChannelsToThing(targetThing, channelsToAdd)
+    }
 
-		//add the channels only defined in source list to the target list
-		ThingHelper.addChannelsToThing(targetThing, channelsToAdd)
-	}
+    def dispatch void merge(Channel target, Channel source) {
+        target.configuration.merge(source.configuration)
+    }
 
-	def dispatch void merge(Channel target, Channel source) {
-		target.configuration.merge(source.configuration)
-	}
+    def private getParentPath(ThingUID bridgeUID) {
+        var bridgeIds = bridgeUID.bridgeIds
+        bridgeIds.add(bridgeUID.id)
+        return bridgeIds
+    }
 
-	def private getParentPath(Bridge bridge) {
-		var bridgeIds = bridge.UID.bridgeIds
-		bridgeIds.add(bridge.UID.id)
-		return bridgeIds
-	}
-
-	def private List<Channel> createChannels(ThingTypeUID thingTypeUID, ThingUID thingUID, List<ModelChannel> modelChannels,
-		List<ChannelDefinition> channelDefinitions) {
-		val Set<String> addedChannelIds = newHashSet
-		val List<Channel> channels = newArrayList
-		modelChannels.forEach [
-			if (addedChannelIds.add(id)) {
-				channels +=
-					ChannelBuilder.create(new ChannelUID(thingTypeUID, thingUID, id), type).withConfiguration(createConfiguration).
-						build
-			}
-		]
-		channelDefinitions.forEach [
-			if (addedChannelIds.add(id)) {
-			    val channelType = TypeResolver.resolve(it.channelTypeUID)
-			    if(channelType != null) {
-				    channels += ChannelBuilder.create(new ChannelUID(thingTypeUID, thingUID, id), channelType.itemType).withType(it.channelTypeUID).build
-				} else {
-				    logger.warn(
+    def private List<Channel> createChannels(ThingTypeUID thingTypeUID, ThingUID thingUID,
+        List<ModelChannel> modelChannels, List<ChannelDefinition> channelDefinitions) {
+        val Set<String> addedChannelIds = newHashSet
+        val List<Channel> channels = newArrayList
+        modelChannels.forEach [
+            if (addedChannelIds.add(id)) {
+                var ChannelKind parsedKind = ChannelKind.STATE
+                
+                var ChannelTypeUID channelTypeUID
+                var String itemType
+                var label = it.label
+                val configuration = createConfiguration
+                if (it.channelType != null) {
+                    channelTypeUID = new ChannelTypeUID(thingUID.bindingId, it.channelType)
+                    val resolvedChannelType = TypeResolver.resolve(channelTypeUID)
+                    if (resolvedChannelType != null) {
+                        itemType = resolvedChannelType.itemType
+                        parsedKind = resolvedChannelType.kind
+                        if (label == null) {
+                            label = resolvedChannelType.label
+                        }
+                        applyDefaultConfiguration(configuration, resolvedChannelType)
+                    } else {
+                        logger.error("Channel type {} could not be resolved.",  channelTypeUID.asString)
+                    }
+                } else {
+                    itemType = it.type
+                    
+                    val kind = if (it.channelKind == null) "State" else it.channelKind                 
+                    parsedKind = ChannelKind.parse(kind)
+                }
+                
+                var channel = ChannelBuilder.create(new ChannelUID(thingUID, id), itemType)
+                    .withKind(parsedKind)
+                    .withConfiguration(configuration)
+                    .withType(channelTypeUID)
+                    .withLabel(label)
+                channels += channel.build()
+            }
+        ]
+        channelDefinitions.forEach [
+            if (addedChannelIds.add(id)) {
+                val channelType = TypeResolver.resolve(it.channelTypeUID)
+                if (channelType != null) {
+                    channels +=
+                        ChannelBuilder.create(new ChannelUID(thingTypeUID, thingUID, id), channelType.itemType).
+                            withType(it.channelTypeUID).build
+                } else {
+                    logger.warn(
                         "Could not create channel '{}' for thing '{}', because channel type '{}' could not be found.",
                         it.getId(), thingUID, it.getChannelTypeUID());
-				}
-			}
-		]
-		channels
-	}
+                }
+            }
+        ]
+        channels
+    }
+    
+    def private applyDefaultConfiguration(Configuration configuration, ChannelType channelType) {
+        if (configDescriptionRegistry != null && configuration != null) {
+            if (channelType.configDescriptionURI != null) {
+                val configDescription = configDescriptionRegistry.getConfigDescription(channelType.configDescriptionURI)
+                if (configDescription != null) {
+                    configDescription.parameters.filter[
+                        ^default != null && configuration.get(name) == null
+                    ].forEach[
+                        val value = getDefaultValueAsCorrectType(type, ^default)
+                        if (value != null) {
+                            configuration.put(name, value);
+                        }
+                    ]
+                }
+            }
+        }
+    }
+    
+    def private Object getDefaultValueAsCorrectType(Type parameterType, String defaultValue) {
+        try {
+            switch (parameterType) {
+                case TEXT:
+                    return defaultValue
+                case BOOLEAN:
+                    return Boolean.parseBoolean(defaultValue)
+                case INTEGER:
+                    return new BigDecimal(defaultValue)
+                case DECIMAL:
+                    return new BigDecimal(defaultValue)
+                default:
+                    return null
+            }
+        } catch (NumberFormatException ex) {
+            logger.warn("Could not parse default value '{}' as type '{}': {}", defaultValue, parameterType, ex.getMessage(), ex);
+            return null;
+        }
+    }
+    
 
-	def private createConfiguration(ModelPropertyContainer propertyContainer) {
-		val configuration = new Configuration
-		propertyContainer.properties.forEach [
-			configuration.put(key, value)
-		]
-		configuration
-	}
+    def private createConfiguration(ModelPropertyContainer propertyContainer) {
+        val configuration = new Configuration
+        propertyContainer.properties.forEach [
+            configuration.put(key, value)
+        ]
+        configuration
+    }
 
-	def private getThingType(ThingTypeUID thingTypeUID) {
-		thingTypeRegistry?.getThingType(thingTypeUID, Locale.getDefault())
-	}
+    def private getThingType(ThingTypeUID thingTypeUID) {
+        thingTypeRegistry?.getThingType(thingTypeUID, localeProvider.getLocale())
+    }
 
-	def protected void setModelRepository(ModelRepository modelRepository) {
-		this.modelRepository = modelRepository
-		modelRepository.addModelRepositoryChangeListener(this)
-	}
+    def protected void setModelRepository(ModelRepository modelRepository) {
+        this.modelRepository = modelRepository
+        modelRepository.addModelRepositoryChangeListener(this)
+    }
 
-	def protected void unsetModelRepository(ModelRepository modelRepository) {
-		modelRepository.removeModelRepositoryChangeListener(this)
-		this.modelRepository = null
-	}
+    def protected void unsetModelRepository(ModelRepository modelRepository) {
+        modelRepository.removeModelRepositoryChangeListener(this)
+        this.modelRepository = null
+    }
 
-	override void modelChanged(String modelName, org.eclipse.smarthome.model.core.EventType type) {
-		if (modelName.endsWith("things")) {
-			switch type {
-				case org.eclipse.smarthome.model.core.EventType.ADDED: {
-					createThingsFromModel(modelName)
-					val things = thingsMap.get(modelName) ?: newArrayList
-					things.forEach [
-						notifyListenersAboutAddedElement
-					]
-				}
-				case org.eclipse.smarthome.model.core.EventType.MODIFIED: {
-					val oldThings = thingsMap.get(modelName) ?: newArrayList
-					val oldThingsUIDs = oldThings.map[UID].toList
+    override void modelChanged(String modelName, org.eclipse.smarthome.model.core.EventType type) {
+        if (modelName.endsWith("things")) {
+            switch type {
+                case org.eclipse.smarthome.model.core.EventType.ADDED: {
+                    createThingsFromModel(modelName)
+                }
+                case org.eclipse.smarthome.model.core.EventType.MODIFIED: {
+                    val oldThings = thingsMap.get(modelName) ?: newArrayList
+                    val model = modelRepository.getModel(modelName) as ThingModel
+                    val newThingUIDs = model.allThingUIDs
+                    val removedThings = oldThings.filter[!newThingUIDs.contains(it.UID)]
+                    removedThings.forEach [
+                        notifyListenersAboutRemovedElement
+                    ]
 
-					createThingsFromModel(modelName)
-					val currentThings = thingsMap.get(modelName) ?: newArrayList
-					val currentThingUIDs = currentThings.map[UID].toList
-					val removedThings = oldThings.filter[!currentThingUIDs.contains(UID)]
-					val addedThings = currentThings.filter[!oldThingsUIDs.contains(UID)]
+                    createThingsFromModel(modelName)
+                }
+                case org.eclipse.smarthome.model.core.EventType.REMOVED: {
+                    val things = thingsMap.remove(modelName) ?: newArrayList
+                    things.forEach [
+                        notifyListenersAboutRemovedElement
+                    ]
+                }
+            }
+        }
+    }
 
-					removedThings.forEach [
-						notifyListenersAboutRemovedElement
-					]
-					addedThings.forEach [
-						notifyListenersAboutAddedElement
-					]
+    def private Set<ThingUID> getAllThingUIDs(ThingModel model) {
+        return getAllThingUIDs(model.things, null)
+    }    
 
-					currentThings.forEach [ newThing |
-						val oldThing = oldThings.findFirst[it.UID == newThing.UID]
-						if(oldThing != null) {
-							if (!ThingHelper.equals(oldThing, newThing)) {
-								notifyListenersAboutUpdatedElement(oldThing, newThing)
-							}
-						}
-					]
-				}
-				case org.eclipse.smarthome.model.core.EventType.REMOVED: {
-					val things = thingsMap.remove(modelName) ?: newArrayList
-					things.forEach [
-						notifyListenersAboutRemovedElement
-					]
-				}
-			}
-		}
-	}
+    def private Set<ThingUID> getAllThingUIDs(List<ModelThing> thingList, ThingUID parentUID) {
+        val ret = new HashSet<ThingUID>()
+        thingList.forEach[
+            val thingUID = getThingUID(it, parentUID)
+            ret.add(thingUID)
+            if (it instanceof ModelBridge) {
+                ret.addAll(getAllThingUIDs(things, thingUID))
+            } 
+        ]
+        return ret
+    }    
+    
+    def private ThingUID getThingUID(ModelThing modelThing, ThingUID parentUID) {
+        if (parentUID != null && modelThing.id == null) {
+            val thingTypeUID = new ThingTypeUID(parentUID.bindingId, modelThing.thingTypeId)
+            return new ThingUID(thingTypeUID, modelThing.thingId, parentUID.parentPath)
+        } else {
+            return modelThing.constructThingUID
+        }
+    }
 
-	def protected void setThingTypeRegistry(ThingTypeRegistry thingTypeRegistry) {
-		this.thingTypeRegistry = thingTypeRegistry
-	}
+    def protected void setLocaleProvider(LocaleProvider localeProvider) {
+        this.localeProvider = localeProvider
+    }
 
-	def protected void unsetThingTypeRegistry(ThingTypeRegistry thingTypeRegistry) {
-		this.thingTypeRegistry = null
-	}
+    def protected void unsetLocaleProvider(LocaleProvider localeProvider) {
+        this.localeProvider = null
+    }
 
-	def protected void addThingHandlerFactory(ThingHandlerFactory thingHandlerFactory) {
-		logger.debug("ThingHandlerFactory added {}", thingHandlerFactory)
-		this.thingHandlerFactories.add(thingHandlerFactory);
-		thingHandlerFactoryAdded(thingHandlerFactory)
-	}
+    def protected void setThingTypeRegistry(ThingTypeRegistry thingTypeRegistry) {
+        this.thingTypeRegistry = thingTypeRegistry
+    }
 
-	def protected void removeThingHandlerFactory(ThingHandlerFactory thingHandlerFactory) {
-		this.thingHandlerFactories.remove(thingHandlerFactory);
-		thingHandlerFactoryRemoved()
-	}
+    def protected void unsetThingTypeRegistry(ThingTypeRegistry thingTypeRegistry) {
+        this.thingTypeRegistry = null
+    }
 
-	def private thingHandlerFactoryRemoved() {
-		//Don't do anything, Things should not be deleted
-	}
+    def protected void addThingHandlerFactory(ThingHandlerFactory thingHandlerFactory) {
+        logger.debug("ThingHandlerFactory added {}", thingHandlerFactory)
+        this.thingHandlerFactories.add(thingHandlerFactory);
+        thingHandlerFactoryAdded(thingHandlerFactory)
+    }
 
-	def private thingHandlerFactoryAdded(ThingHandlerFactory thingHandlerFactory) {
-		thingsMap.keySet.forEach [
-			//create things for this specific thingHandlerFactory from the model.
-			createThingsFromModelForThingHandlerFactory(it, thingHandlerFactory)
-		]
-	}
+    def protected void removeThingHandlerFactory(ThingHandlerFactory thingHandlerFactory) {
+        this.thingHandlerFactories.remove(thingHandlerFactory);
+        thingHandlerFactoryRemoved()
+    }
 
-	def private createThingsFromModelForThingHandlerFactory(String modelName, ThingHandlerFactory factory) {
-		val oldThings = thingsMap.get(modelName).clone
-		val newThings = newArrayList()
-		if (modelRepository != null) {
-			val model = modelRepository.getModel(modelName) as ThingModel
-			if (model != null) {
-				model.things.forEach [
-					createThing(null, newThings, factory)
-				]
-			}
-		}
-		newThings.forEach [ newThing |
-			val oldThing = oldThings.findFirst[it.UID == newThing.UID]
-			if (oldThing != null) {
-				// this thing already existed, so let's ignore it
-			} else {
-				logger.debug("Adding thing '{}' from model '{}.", newThing.UID, modelName);
-				thingsMap.get(modelName).add(newThing)
-				newThing.notifyListenersAboutAddedElement
-			}
-		]
-	}
+    def private thingHandlerFactoryRemoved() {
+        // Don't do anything, Things should not be deleted
+    }
+
+    def private thingHandlerFactoryAdded(ThingHandlerFactory thingHandlerFactory) {
+        vetoManager.applyActionFor(thingHandlerFactory)
+    }
+
+    def private createThingsFromModelForThingHandlerFactory(String modelName, ThingHandlerFactory factory) {
+        val oldThings = thingsMap.get(modelName).clone
+        val newThings = newArrayList()
+        if (modelRepository != null) {
+            val model = modelRepository.getModel(modelName) as ThingModel
+            if (model != null) {
+                model.things.forEach [
+                    createThing(null, newThings, factory)
+                ]
+            }
+        }
+        newThings.forEach [ newThing |
+            val oldThing = oldThings.findFirst[it.UID == newThing.UID]
+            if (oldThing != null) {
+                logger.debug("Updating thing '{}' from model '{}'.", newThing.UID, modelName);
+                notifyListenersAboutUpdatedElement(oldThing, newThing)
+            } else {
+                logger.debug("Adding thing '{}' from model '{}'.", newThing.UID, modelName);
+                thingsMap.get(modelName).add(newThing)
+                newThing.notifyListenersAboutAddedElement
+            }
+        ]
+    }
 
     private val lazyRetryRunnable = new Runnable() {
         override run() {
@@ -415,17 +558,18 @@ class GenericThingProvider extends AbstractProvider<Thing> implements ThingProvi
                             qc.bridgeUID)
                         if (thing != null) {
                             queue.remove(qc)
-                            thing.label = qc.label
                             logger.debug("Successfully loaded '{}' during retry", qc.thingUID)
                             newThings.add(thing)
                         }
                     ]
                     if (!newThings.empty) {
                         newThings.forEach [ newThing |
-                            val modelName = thingsMap.keySet.findFirst[mName|
-                                !thingsMap.get(mName).filter[it.UID == newThing.UID].empty]
+                            val modelName = thingsMap.keySet.findFirst [ mName |
+                                !thingsMap.get(mName).filter[it.UID == newThing.UID].empty
+                            ]
                             val oldThing = thingsMap.get(modelName).findFirst[it.UID == newThing.UID]
                             if (oldThing != null) {
+                                newThing.merge(oldThing)
                                 thingsMap.get(modelName).remove(oldThing)
                                 thingsMap.get(modelName).add(newThing)
                                 logger.debug("Refreshing thing '{}' after successful retry", newThing.UID)
@@ -454,6 +598,22 @@ class GenericThingProvider extends AbstractProvider<Thing> implements ThingProvi
         ThingUID thingUID
         ThingUID bridgeUID
         ThingHandlerFactory thingHandlerFactory
+    }
+
+    def protected void addBundleProcessor(BundleProcessor bundleProcessor) {
+        vetoManager.addBundleProcessor(bundleProcessor)
+    }
+
+    def protected void removeBundleProcessor(BundleProcessor bundleProcessor) {
+        vetoManager.removeBundleProcessor(bundleProcessor)
+    }
+    
+    def protected void setConfigDescriptionRegistry(ConfigDescriptionRegistry configDescriptionRegistry) {
+        this.configDescriptionRegistry = configDescriptionRegistry
+    }
+
+    def protected void unsetConfigDescriptionRegistry(ConfigDescriptionRegistry configDescriptionRegistry) {
+        this.configDescriptionRegistry = null
     }
 
 }

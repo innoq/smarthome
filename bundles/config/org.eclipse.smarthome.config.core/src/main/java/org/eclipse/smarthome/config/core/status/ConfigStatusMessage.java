@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015 openHAB UG (haftungsbeschraenkt) and others.
+ * Copyright (c) 2014-2016 by the respective copyright holders.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -7,12 +7,31 @@
  */
 package org.eclipse.smarthome.config.core.status;
 
+import java.util.Arrays;
+
+import com.google.common.base.Preconditions;
+
 /**
  * The {@link ConfigStatusMessage} is a domain object for a configuration status message. It contains the name
- * of the corresponding configuration parameter, a type information, the internationalized error message
- * and an optional status code.
+ * of the configuration parameter, the {@link ConfigStatusMessage.Type} information, the internationalized message and
+ * an optional status code.
+ * <p>
+ * The framework will take care of setting the corresponding internationalized message. For this purpose there must be
+ * an i18n properties file inside the bundle of the {@link ConfigStatusProvider} that has a message declared for the
+ * {@link ConfigStatusMessage#messageKey}. The actual message key is built by
+ * {@link ConfigStatusMessage.Builder#withMessageKeySuffix(String)} in the manner that the given message key suffix is
+ * appended to <code>config-status.config-status-message-type.</code>. As a result depending on the type of the message
+ * the final constructed message keys are:
+ * <ul>
+ * <li>config-status.information.any-suffix</li>
+ * <li>config-status.warning.any-suffix</li>
+ * <li>config-status.error.any-suffix</li>
+ * <li>config-status.pending.any-suffix</li>
+ * </ul>
+ * </p>
  *
  * @author Thomas Höfer - Initial contribution
+ * @author Chris Jackson - Add withMessageKey and remove message from other methods
  */
 public final class ConfigStatusMessage {
 
@@ -51,6 +70,12 @@ public final class ConfigStatusMessage {
     /** The {@link Type} of the configuration status message. */
     public final Type type;
 
+    /** The key for the message to be internalized. */
+    final transient String messageKey;
+
+    /** The arguments to be injected into the internationalized message. */
+    final transient Object[] arguments;
+
     /** The corresponding internationalized status message. */
     public final String message;
 
@@ -61,15 +86,39 @@ public final class ConfigStatusMessage {
     public final Integer statusCode;
 
     /**
-     * Constructor.
+     * Creates a new {@link ConfigStatusMessage}.
      *
      * @param builder the configuration status message builder
      */
     private ConfigStatusMessage(Builder builder) {
         this.parameterName = builder.parameterName;
         this.type = builder.type;
-        this.message = builder.message;
+        this.messageKey = builder.messageKey;
+        this.arguments = builder.arguments;
+        this.message = null;
         this.statusCode = builder.statusCode;
+    }
+
+    /**
+     * Creates a new {@link ConfigStatusMessage} with an internationalized message.
+     *
+     * @param parameterName the name of the configuration parameter
+     * @param type the {@link Type} of the configuration status message
+     * @param message the corresponding internationalized status message
+     * @param statusCode the optional status code
+     */
+    ConfigStatusMessage(String parameterName, Type type, String message, Integer statusCode) {
+        this(parameterName, type, null, null, message, statusCode);
+    }
+
+    private ConfigStatusMessage(String parameterName, Type type, String messageKey, Object[] arguments, String message,
+            Integer statusCode) {
+        this.parameterName = parameterName;
+        this.type = type;
+        this.messageKey = messageKey;
+        this.arguments = arguments;
+        this.message = message;
+        this.statusCode = statusCode;
     }
 
     /**
@@ -77,67 +126,80 @@ public final class ConfigStatusMessage {
      */
     public static class Builder {
 
+        private static final String CONFIG_STATUS_MSG_KEY_PREFIX = "config-status.";
+
         private final String parameterName;
 
         private final Type type;
 
-        private final String message;
+        private String messageKey;
+
+        private Object[] arguments;
 
         private Integer statusCode;
 
-        private Builder(String parameterName, Type type, String message) {
+        private Builder(String parameterName, Type type) {
+            Preconditions.checkNotNull(parameterName, "Parameter name must not be null.");
+            Preconditions.checkNotNull(type, "Type must not be null.");
             this.parameterName = parameterName;
             this.type = type;
-            this.message = message;
         }
 
         /**
          * Creates a builder for the construction of a {@link ConfigStatusMessage} having type
          * {@link Type#INFORMATION}.
          *
-         * @param parameterName the name of the configuration parameter.
-         * @param message the corresponding internationalized information message.
+         * @param parameterName the name of the configuration parameter (must not be null)
          *
          * @return the new builder instance
          */
-        public static Builder information(String parameterName, String message) {
-            return new Builder(parameterName, Type.INFORMATION, message);
+        public static Builder information(String parameterName) {
+            return new Builder(parameterName, Type.INFORMATION);
         }
 
         /**
          * Creates a builder for the construction of a {@link ConfigStatusMessage} having type {@link Type#WARNING}.
          *
-         * @param parameterName the name of the configuration parameter.
-         * @param message the corresponding internationalized warning message.
+         * @param parameterName the name of the configuration parameter (must not be null)
          *
          * @return the new builder instance
          */
-        public static Builder warning(String parameterName, String message) {
-            return new Builder(parameterName, Type.WARNING, message);
+        public static Builder warning(String parameterName) {
+            return new Builder(parameterName, Type.WARNING);
         }
 
         /**
          * Creates a builder for the construction of a {@link ConfigStatusMessage} having type {@link Type#ERROR}.
          *
-         * @param parameterName the name of the configuration parameter.
-         * @param message the corresponding internationalized error message.
+         * @param parameterName the name of the configuration parameter (must not be null)
          *
          * @return the new builder instance
          */
-        public static Builder error(String parameterName, String message) {
-            return new Builder(parameterName, Type.ERROR, message);
+        public static Builder error(String parameterName) {
+            return new Builder(parameterName, Type.ERROR);
         }
 
         /**
          * Creates a builder for the construction of a {@link ConfigStatusMessage} having type {@link Type#PENDING}.
          *
-         * @param parameterName the name of the configuration parameter.
-         * @param message the corresponding internationalized error message.
+         * @param parameterName the name of the configuration parameter (must not be null)
          *
          * @return the new builder instance
          */
-        public static Builder pending(String parameterName, String message) {
-            return new Builder(parameterName, Type.PENDING, message);
+        public static Builder pending(String parameterName) {
+            return new Builder(parameterName, Type.PENDING);
+        }
+
+        /**
+         * Adds the given arguments (to be injected into the internationalized message) to the builder.
+         *
+         * @param arguments the arguments to be added
+         *
+         * @return the updated builder instance
+         */
+        public Builder withArguments(Object... arguments) {
+            this.arguments = arguments;
+            return this;
         }
 
         /**
@@ -153,6 +215,18 @@ public final class ConfigStatusMessage {
         }
 
         /**
+         * Adds the given message key suffix for the creation of {@link ConfigStatusMessage#messageKey}.
+         *
+         * @param messageKeySuffix the message key suffix to be added
+         *
+         * @return the updated builder
+         */
+        public Builder withMessageKeySuffix(String messageKeySuffix) {
+            this.messageKey = CONFIG_STATUS_MSG_KEY_PREFIX + type.name().toLowerCase() + "." + messageKeySuffix;
+            return this;
+        }
+
+        /**
          * Builds the new {@link ConfigStatusMessage} object.
          *
          * @return new {@link ConfigStatusMessage} object.
@@ -162,11 +236,6 @@ public final class ConfigStatusMessage {
         }
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see java.lang.Object#hashCode()
-     */
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -178,43 +247,50 @@ public final class ConfigStatusMessage {
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     *
-     * @see java.lang.Object#equals(java.lang.Object)
-     */
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (obj == null)
+        }
+        if (obj == null) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         ConfigStatusMessage other = (ConfigStatusMessage) obj;
         if (message == null) {
-            if (other.message != null)
+            if (other.message != null) {
                 return false;
-        } else if (!message.equals(other.message))
+            }
+        } else if (!message.equals(other.message)) {
             return false;
+        }
         if (parameterName == null) {
-            if (other.parameterName != null)
+            if (other.parameterName != null) {
                 return false;
-        } else if (!parameterName.equals(other.parameterName))
+            }
+        } else if (!parameterName.equals(other.parameterName)) {
             return false;
+        }
         if (statusCode == null) {
-            if (other.statusCode != null)
+            if (other.statusCode != null) {
                 return false;
-        } else if (!statusCode.equals(other.statusCode))
+            }
+        } else if (!statusCode.equals(other.statusCode)) {
             return false;
-        if (type != other.type)
+        }
+        if (type != other.type) {
             return false;
+        }
         return true;
     }
 
     @Override
     public String toString() {
-        return "ConfigStatusMessage [parameterName=" + parameterName + ", type=" + type + ", message=" + message
-                + ", statusCode=" + statusCode + "]";
+        return "ConfigStatusMessage [parameterName=" + parameterName + ", type=" + type + ", messageKey=" + messageKey
+                + ", arguments=" + Arrays.toString(arguments) + ", message=" + message + ", statusCode=" + statusCode
+                + "]";
     }
+
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015 openHAB UG (haftungsbeschraenkt) and others.
+ * Copyright (c) 2014-2016 by the respective copyright holders.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -154,15 +154,6 @@ public class ThingTypeRegistry {
         ChannelTypeUID channelTypeUID = channel.getChannelTypeUID();
         if (channelTypeUID != null) {
             return TypeResolver.resolve(channelTypeUID, locale);
-        }
-        // fallback for lookup over the thing type
-        ChannelUID channelUID = channel.getUID();
-        ThingType thingType = this.getThingType(channelUID.getThingTypeUID(), locale);
-        if (thingType != null) {
-            channelTypeUID = thingType.getChannelTypeUID(channelUID);
-            if (channelTypeUID != null) {
-                return TypeResolver.resolve(channelTypeUID, locale);
-            }
         }
         return null;
     }

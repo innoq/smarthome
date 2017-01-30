@@ -12,10 +12,9 @@ import java.util.Map;
 import org.eclipse.smarthome.automation.Trigger;
 import org.eclipse.smarthome.automation.handler.RuleEngineCallback;
 import org.quartz.Job;
+import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
-import org.quartz.SchedulerContext;
-import org.quartz.SchedulerException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,29 +22,24 @@ import com.google.common.collect.Maps;
 
 /**
  * This is an Job implementation which encapsulates a {@code RuleEngineCallback} in order to trigger a {@code Trigger}.
- * {@see TimerTriggerHandler}
+ * {@see GenericCronTriggerHandler}
  *
  * @author Christoph Knauf - Initial Contribution
  *
  */
 public class CallbackJob implements Job {
 
-    private final Logger logger = LoggerFactory.getLogger(TimerTriggerHandler.class);
+    private final Logger logger = LoggerFactory.getLogger(GenericCronTriggerHandler.class);
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
-        SchedulerContext schedulerContext = null;
-        try {
-            schedulerContext = context.getScheduler().getContext();
-        } catch (SchedulerException e1) {
-            logger.error("Error while resolving scheduler context");
-        }
-        if (schedulerContext == null) {
-            logger.error("Can't execute CallbackJob. SchedulerContext is null");
+        JobDataMap dataMap = context.getJobDetail().getJobDataMap();// each Job has its own JobDetail
+        if (dataMap == null) {
+            logger.error("Can't execute CallbackJob. JobDataMap is null");
         } else {
-            RuleEngineCallback callback = (RuleEngineCallback) schedulerContext
-                    .get(TimerTriggerHandler.CALLBACK_CONTEXT_NAME);
-            Trigger module = (Trigger) schedulerContext.get(TimerTriggerHandler.MODULE_CONTEXT_NAME);
+            RuleEngineCallback callback = (RuleEngineCallback) dataMap.get(GenericCronTriggerHandler.CALLBACK_CONTEXT_NAME);
+            Trigger module = (Trigger) dataMap.get(GenericCronTriggerHandler.MODULE_CONTEXT_NAME);
+
             if (callback == null || module == null) {
                 logger.error("Can't execute CallbackJob. Callback or module is null");
             } else {

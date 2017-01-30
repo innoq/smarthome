@@ -12,6 +12,7 @@ Eclipse SmartHome provides a modular rule engine than can be easily extended.
 
 
 In general this rule engine aims to support rules defined with syntax similar to:
+
 ```
 ON item_id state changed IF item_id.state == desired_value THEN item_id2.state = desired_value2 
 ```
@@ -76,22 +77,13 @@ A given **Module type** has the following elements:
     reference - which means the property value can be specified as a reference to configuration parameter or input parameter
     tags - shows how a given value should be considered (e.g. as a Temperature)
 
-**Supported Java Types**
-The java types supported in the **input/output** objects are:
+**Supported Types**
 
-- Integer
-- Short
-- Long
-- Byte
-- Float
-- Double
-- Boolean
-- Character
-- String
-- StringBuffer
-- Array of the above types
-- List of the above types
-- HashMap (keys are String)
+The types supported in the **input/output** objects can be any string and the following validation is performed:
+
+- if the input type and the output type are equal as string the connection is valid
+- if the input type is "*" and the output type is any the connection is valid
+- if the input type and the output type are strings representing full qualified names which can be loaded and the input type is assignable from output type the connection is valid
 
 The types in the **Configuration** object are restricted to the following:
 
@@ -103,18 +95,13 @@ The types in the **Configuration** object are restricted to the following:
 
 ## Defining Rules via JSON
 
-
-
 **JSON schemas for:**
 
  * [module types](../development/rules/ModuleTypes_schema.json)
  * [rule templates](../development/rules/Templates_schema.json)
  * [rule instances](../development/rules/Rules_schema.json)
 
-
 ### Sample Rules
-
-    
 
  * **Sample rule instance referencing module types:**
 
@@ -324,6 +311,8 @@ There are several ways to add new rules:
  - POST /rest/rules - adds new rule instance to the rule registry.
  - DELETE /rest/rules/{ruleUID} - deletes the specified rule instance.
  - PUT /rest/rules/{ruleUID} - updates the specified rule instance.
+ - PUT /rest/rules/{ruleUID}/enable - enable/disable specified rule instance.
+ - PUT /rest/rules/{ruleUID}/runnow - executes actions of specified rule instance.
  - GET /rest/rules/{ruleUID}/config - returns the configuration of the specified rule instance.
  - PUT /rest/rules/{ruleUID}/config - updates the configuration of the specified rule instance.
  - GET /rest/rules/{ruleUID}/triggers - returns the triggers defined for the specified rule instance.
@@ -391,11 +380,12 @@ Bundles that provide rules in json format should have the following folder struc
 Rule templates can simplify the definition of rules with similar behavior by providing additional configuration properties. Then rule instance definition only refers the rule template and provides the values of the configuration properties. The rule template is used only once when the rule is imported in the Rule Engine. After that the reference from the rule instance to the rule template is removed and a given rule may exist even if the rule template is removed or modified - this will not have any impact on the already imported rules.
 
  * **Sample rule instance referencing rule template:**
+
 ```
   {  
     "uid": "sample.rulebytemplate",
     "name": "RuleByTemplate",
-    "template.uid": "SampleRuleTemplate",
+    "templateUID": "SampleRuleTemplate",
     "tags": [  
       "rule",
       "template"
@@ -408,56 +398,68 @@ Rule templates can simplify the definition of rules with similar behavior by pro
 ```
 
  * **Sample rule template:**
+
 ```
   {  
     "uid":"SampleRuleTemplate",
-    "description":"Sample Rule Template.",
+    "description":"Sample Rule Template",
     "tags":[  
       "sample",
       "rule",
       "template"
     ],
-    "configuration":{  
-        "condition_operator": {
+    "configDescriptions":[  
+         {
+          "name":"condition_operator",              
           "type": "TEXT",
           "description": "Valid operators are =,>,<,!=",
           "required": true
         },
-        "condition_constraint": {
+         {
+          "name":"condition_constraint",              
           "type": "TEXT",
           "description": "Right operand which is compared with the input.",
           "required": true
         }
-    },
+    ],
     "triggers": [  
       {  
-        "id": "CustomSampleTriggerTemplateID",
-        "type": "SampleTrigger:CustomTrigger"
+        "id": "CompositeSampleTriggerTemplateID",
+        "type": "CompositeSampleTrigger",
+        "label": "Sample Trigger",
+        "description": "This is a sample composite trigger"
       }
     ],
     "conditions": [
       {
         "id": "SampleConditionTemplateID",
         "type": "SampleCondition",
+        "label": "Sample Condition",
+        "description": "This is a sample condition",
         "configuration": {
           "operator": "$condition_operator",
           "constraint": "$condition_constraint"
         },
-        "input": {
-          "conditionInput": "CustomSampleTriggerTemplateID.customTriggerOutput"
+        "inputs": {
+          "conditionInput": "CompositeSampleTriggerTemplateID.compositeTriggerOutput"
         }
       }
     ],
     "actions": [
       {  
-        "id": "CustomActionTemplateID",
-        "type": "SampleAction:CustomAction",
-        "input": {  
-          "customActionInput": "CustomSampleTriggerTemplateID.customTriggerOutput"
+        "id": "CompositeActionTemplateID",
+        "type": "CompositeSampleAction",
+        "label": "Sample Action",
+        "description": "This is a sample action",
+        "configuration": {
+          "compositeMessage": "Hello World!!!"
+        },
+        "inputs": {  
+          "compositeActionInput": "CompositeSampleTriggerTemplateID.compositeTriggerOutput"
         }
       }
     ]
-  } 
+  }
 ```
 
 The above example uses two rule configuration properties: "condition_operator" and "condition_constraint" that update the configuration of the "SampleCondition".
@@ -467,6 +469,7 @@ The above example uses two rule configuration properties: "condition_operator" a
 
 
 ### GenericEventTrigger
+
 GenericEventTrigger has 3 configuration paramters: `eventTopic`,` eventSource` and `eventTypes` and one output: 'event'.
 
       {  
@@ -511,7 +514,8 @@ GenericEventTrigger has 3 configuration paramters: `eventTopic`,` eventSource` a
       }
 
 
-### CompareCondition
+### GenericCompareCondition
+
 This module type is used to compare a value against a configuration property using an operator like `<, >, =`.
 The value to be compared can be specified either as an input or as a configuration property.
 
@@ -535,7 +539,7 @@ The value to be compared can be specified either as an input or as a configurati
           "required":true
         },
         {
-            "name":"operator",
+          "name":"operator",
           "type":"TEXT",
           "description":"the compare operator, allowed are <, >, =",
           "required":true,
@@ -544,11 +548,11 @@ The value to be compared can be specified either as an input or as a configurati
       ],
         "inputs": [
             {
-        "name":"input",
+              "name":"input",
               "type": "java.lang.Object",
               "label": "input",
               "description": "The input which will be compared.",
-        "required":true
+              "required":true
             }
     ]
     }

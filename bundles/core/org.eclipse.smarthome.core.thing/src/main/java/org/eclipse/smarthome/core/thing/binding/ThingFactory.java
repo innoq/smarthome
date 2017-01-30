@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015 openHAB UG (haftungsbeschraenkt) and others.
+ * Copyright (c) 2014-2016 by the respective copyright holders.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -18,11 +18,12 @@ import org.eclipse.smarthome.core.thing.Thing;
 import org.eclipse.smarthome.core.thing.ThingTypeUID;
 import org.eclipse.smarthome.core.thing.ThingUID;
 import org.eclipse.smarthome.core.thing.binding.builder.BridgeBuilder;
-import org.eclipse.smarthome.core.thing.binding.builder.GenericThingBuilder;
 import org.eclipse.smarthome.core.thing.binding.builder.ThingBuilder;
 import org.eclipse.smarthome.core.thing.internal.ThingFactoryHelper;
 import org.eclipse.smarthome.core.thing.type.BridgeType;
 import org.eclipse.smarthome.core.thing.type.ThingType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * {@link ThingFactory} helps to create thing based on a given {@link ThingType} .
@@ -34,6 +35,7 @@ import org.eclipse.smarthome.core.thing.type.ThingType;
  * @author Chris Jackson - Added properties, label, description
  */
 public class ThingFactory {
+    private static final Logger logger = LoggerFactory.getLogger(ThingFactory.class);
 
     /**
      * Generates a random Thing UID for the given thingType
@@ -52,11 +54,11 @@ public class ThingFactory {
      * Creates a thing based on a given thing type.
      *
      * @param thingType
-     *            thing type (should not be null)
+     *            thing type (must not be null)
      * @param thingUID
-     *            thindUID (should not be null)
+     *            thindUID (must not be null)
      * @param configuration
-     *            (should not be null)
+     *            (must not be null)
      * @param bridge
      *            (can be null)
      * @return thing
@@ -72,11 +74,11 @@ public class ThingFactory {
      * configDescriptionRegistry is not null
      *
      * @param thingType
-     *            (should not be null)
+     *            (must not be null)
      * @param thingUID
-     *            (should not be null)
+     *            (must not be null)
      * @param configuration
-     *            (should not be null)
+     *            (must not be null)
      * @param bridgeUID
      *            (can be null)
      * @param configDescriptionRegistry
@@ -86,10 +88,10 @@ public class ThingFactory {
     public static Thing createThing(ThingType thingType, ThingUID thingUID, Configuration configuration,
             ThingUID bridgeUID, ConfigDescriptionRegistry configDescriptionRegistry) {
         if (thingType == null) {
-            throw new IllegalArgumentException("The thingType should not be null.");
+            throw new IllegalArgumentException("The thingType must not be null.");
         }
         if (thingUID == null) {
-            throw new IllegalArgumentException("The thingUID should not be null.");
+            throw new IllegalArgumentException("The thingUID must not be null.");
         }
 
         ThingFactoryHelper.applyDefaultConfiguration(configuration, thingType, configDescriptionRegistry);
@@ -105,9 +107,15 @@ public class ThingFactory {
         for (ThingHandlerFactory thingHandlerFactory : thingHandlerFactories) {
             if (thingHandlerFactory.supportsThingType(thingTypeUID)) {
                 Thing thing = thingHandlerFactory.createThing(thingTypeUID, configuration, thingUID, bridgeUID);
-                if (properties != null) {
-                    for (String key : properties.keySet()) {
-                        thing.setProperty(key, properties.get(key));
+                if (thing == null) {
+                    logger.error(
+                            "Thing factory ({}) returned null on create thing when it reports to support the thing type ({}).",
+                            thingHandlerFactory.getClass(), thingTypeUID);
+                } else {
+                    if (properties != null) {
+                        for (String key : properties.keySet()) {
+                            thing.setProperty(key, properties.get(key));
+                        }
                     }
                 }
                 return thing;
@@ -121,18 +129,18 @@ public class ThingFactory {
      * Creates a thing based on given thing type.
      *
      * @param thingType
-     *            thing type (should not be null)
+     *            thing type (must not be null)
      * @param thingUID
-     *            thindUID (should not be null)
+     *            thingUID (must not be null)
      * @param configuration
-     *            (should not be null)
+     *            (must not be null)
      * @return thing
      */
     public static Thing createThing(ThingType thingType, ThingUID thingUID, Configuration configuration) {
         return createThing(thingType, thingUID, configuration, null);
     }
 
-    private static GenericThingBuilder<?> createThingBuilder(ThingType thingType, ThingUID thingUID) {
+    private static ThingBuilder createThingBuilder(ThingType thingType, ThingUID thingUID) {
         if (thingType instanceof BridgeType) {
             return BridgeBuilder.create(thingType.getUID(), thingUID);
         }

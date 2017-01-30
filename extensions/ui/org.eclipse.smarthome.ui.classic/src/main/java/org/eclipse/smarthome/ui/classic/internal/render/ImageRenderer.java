@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015 openHAB UG (haftungsbeschraenkt) and others.
+ * Copyright (c) 2014-2016 by the respective copyright holders.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -42,13 +42,9 @@ public class ImageRenderer extends AbstractWidgetRenderer {
         String snippet = (image.getChildren().size() > 0) ? getSnippet("image_link") : getSnippet("image");
 
         if (image.getRefresh() > 0) {
-            snippet = StringUtils.replace(snippet, "%setrefresh%",
-                    "<script type=\"text/javascript\">imagesToRefreshOnPage=1</script>");
-            snippet = StringUtils.replace(snippet, "%refresh%",
-                    "id=\"%id%\" onload=\"setTimeout('reloadImage(\\'%url%\\', \\'%id%\\')', " + image.getRefresh()
-                            + ")\"");
+            snippet = StringUtils.replace(snippet, "%refresh%", "id=\"%id%\" data-timeout=\"" + image.getRefresh()
+                            + "\" onload=\"startReloadImage('%url%', '%id%')\"");
         } else {
-            snippet = StringUtils.replace(snippet, "%setrefresh%", "");
             snippet = StringUtils.replace(snippet, "%refresh%", "");
         }
 

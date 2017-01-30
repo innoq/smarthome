@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-2015 openHAB UG (haftungsbeschraenkt) and others.
+ * Copyright (c) 2014-2016 by the respective copyright holders.
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License v1.0
  * which accompanies this distribution, and is available at
@@ -12,6 +12,7 @@ import static org.hamcrest.CoreMatchers.*
 import static org.junit.Assert.*
 import static org.junit.matchers.JUnitMatchers.*
 import nl.q42.jue.FullLight
+import nl.q42.jue.HueBridge
 import nl.q42.jue.MockedHttpClient
 import nl.q42.jue.HttpClient.Result
 
@@ -24,16 +25,13 @@ import org.eclipse.smarthome.config.discovery.DiscoveryResult
 import org.eclipse.smarthome.config.discovery.DiscoveryResultFlag
 import org.eclipse.smarthome.config.discovery.DiscoveryService
 import org.eclipse.smarthome.core.thing.Bridge
-import org.eclipse.smarthome.core.thing.ManagedThingProvider
-import org.eclipse.smarthome.core.thing.ThingProvider
+import org.eclipse.smarthome.core.thing.ThingRegistry
 import org.eclipse.smarthome.core.thing.ThingStatus
 import org.eclipse.smarthome.core.thing.ThingStatusDetail
 import org.eclipse.smarthome.core.thing.ThingTypeUID
 import org.eclipse.smarthome.core.thing.ThingUID
-import org.eclipse.smarthome.core.thing.binding.ThingHandler
 import org.eclipse.smarthome.core.thing.binding.builder.ThingStatusInfoBuilder
 import org.eclipse.smarthome.test.AsyncResultWrapper
-import org.eclipse.smarthome.test.OSGiTest
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -44,12 +42,13 @@ import org.junit.Test
  *
  * @author Kai Kreuzer - Initial contribution
  * @author Andre Fuechsel - added test 'assert start search is called()'
+ *                        - modified tests after introducing the generic thing types
  */
-class HueLightDiscoveryServiceOSGITest extends OSGiTest {
+class HueLightDiscoveryServiceOSGITest extends AbstractHueOSGiTest {
 
     HueThingHandlerFactory hueThingHandlerFactory
     DiscoveryListener discoveryListener
-    ManagedThingProvider managedThingProvider
+    ThingRegistry thingRegistry
     Bridge hueBridge
     HueBridgeHandler hueBridgeHandler
     HueLightDiscoveryService discoveryService
@@ -61,11 +60,9 @@ class HueLightDiscoveryServiceOSGITest extends OSGiTest {
     @Before
     void setUp() {
         registerVolatileStorageService()
-        managedThingProvider = getService(ThingProvider, ManagedThingProvider)
-        assertThat managedThingProvider, is(notNullValue())
 
-        hueBridgeHandler = getService(ThingHandler, HueBridgeHandler)
-        assertThat hueBridgeHandler, is(nullValue())
+        thingRegistry = getService(ThingRegistry, ThingRegistry)
+        assertThat thingRegistry, is(notNullValue())
 
         Configuration configuration = new Configuration().with {
             put(HOST, "1.2.3.4")
@@ -74,18 +71,16 @@ class HueLightDiscoveryServiceOSGITest extends OSGiTest {
             it
         }
 
-        hueBridge = managedThingProvider.createThing(
+        hueBridge = thingRegistry.createThingOfType(
                 BRIDGE_THING_TYPE_UID,
                 BRIDGE_THING_UID,
                 null, "Bridge", configuration)
 
         assertThat hueBridge, is(notNullValue())
+        thingRegistry.add(hueBridge)
 
-        // wait for HueBridgeHandler to be registered
-        waitForAssert({
-            hueBridgeHandler = getService(ThingHandler, HueBridgeHandler)
-            assertThat hueBridgeHandler, is(notNullValue())
-        }, 10000)
+        hueBridgeHandler = getThingHandler(HueBridgeHandler)
+        assertThat hueBridgeHandler, is(notNullValue())
 
         discoveryService = getService(DiscoveryService, HueLightDiscoveryService)
         assertThat discoveryService, is(notNullValue())
@@ -93,7 +88,7 @@ class HueLightDiscoveryServiceOSGITest extends OSGiTest {
 
     @After
     void cleanUp() {
-        managedThingProvider.remove(BRIDGE_THING_UID)
+        thingRegistry.remove(BRIDGE_THING_UID)
     }
 
     private void registerDiscoveryListener(DiscoveryListener discoveryListener) {
@@ -113,6 +108,7 @@ class HueLightDiscoveryServiceOSGITest extends OSGiTest {
         FullLight light = FullLight.class.newInstance()
         light.id = "1"
         light.modelid = "LCT001"
+        light.type = "Extended color light"
 
         def AsyncResultWrapper<DiscoveryResult> resultWrapper = new AsyncResultWrapper<DiscoveryResult>()
         registerDiscoveryListener( [
@@ -132,8 +128,8 @@ class HueLightDiscoveryServiceOSGITest extends OSGiTest {
 
         resultWrapper.wrappedObject.with {
             assertThat flag, is (DiscoveryResultFlag.NEW)
-            assertThat thingUID.toString(), is("hue:LCT001:testBridge:" + light.id)
-            assertThat thingTypeUID, is (THING_TYPE_LCT001)
+            assertThat thingUID.toString(), is("hue:0210:testBridge:" + light.id)
+            assertThat thingTypeUID, is (THING_TYPE_EXTENDED_COLOR_LIGHT)
             assertThat bridgeUID, is(hueBridge.getUID())
             assertThat properties.get(LIGHT_ID), is (light.id)
         }
@@ -183,20 +179,21 @@ class HueLightDiscoveryServiceOSGITest extends OSGiTest {
 
     private void installHttpClientMock(HueBridgeHandler hueBridgeHandler,
             MockedHttpClient mockedHttpClient) {
+        waitForAssert {
+            // mock HttpClient
+            def hueBridgeField = HueBridgeHandler.class.getDeclaredField("bridge")
+            hueBridgeField.accessible = true
+            def hueBridgeValue = hueBridgeField.get(hueBridgeHandler)
+            assertThat hueBridgeValue, is(notNullValue())
 
-        // mock HttpClient
-        def hueBridgeField = hueBridgeHandler.getClass().getDeclaredField("bridge")
-        hueBridgeField.accessible = true
-        def hueBridgeValue = hueBridgeField.get(hueBridgeHandler)
+            def httpClientField = HueBridge.class.getDeclaredField("http")
+            httpClientField.accessible = true
+            httpClientField.set(hueBridgeValue, mockedHttpClient)
 
-        def httpClientField = hueBridgeValue.getClass().getDeclaredField("http")
-        httpClientField.accessible = true
-        httpClientField.set(hueBridgeValue, mockedHttpClient)
-
-        def usernameField = hueBridgeValue.getClass().getDeclaredField("username")
-        usernameField.accessible = true
-        usernameField.set(hueBridgeValue, hueBridgeHandler.config.get(USER_NAME))
-
+            def usernameField = HueBridge.class.getDeclaredField("username")
+            usernameField.accessible = true
+            usernameField.set(hueBridgeValue, hueBridgeHandler.config.get(USER_NAME))
+        }
         hueBridgeHandler.initialize()
     }
 }
